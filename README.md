@@ -16,11 +16,11 @@ This project was done for SST's (School of Science and Technology, Singapore) Co
 ## Installation
 1. Clone the repository:
    ```
-   git clone https://github.com/yourusername/job-hunting-app.git
+   git clone https://github.com/Sasutski/Job-Seeker
    ```
 2. Navigate to the project directory:
    ```
-   cd job-hunting-app
+   cd ./Job-Seeker
    ```
 3. Install the required dependencies:
    ```
@@ -35,6 +35,9 @@ python src/main.py
 
 ## Contributing
 Contributions are welcome! Please open an issue or submit a pull request for any enhancements or bug fixes.
+
+## Credits
+https://www.kaggle.com/datasets/amirmahdiabbootalebi/salary-by-job-title-and-country - The dataset i used to train the salary model.
 
 ## License
 This project is licensed under the MIT License. See the LICENSE file for details.

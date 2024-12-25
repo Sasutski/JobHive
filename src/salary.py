@@ -1,2 +1,0 @@
-# https://www.kaggle.com/datasets/amirmahdiabbootalebi/salary-by-job-title-and-country 
-# Using this dataset to get the salary of a particular job title in a particular country, age, gender, country, years of experience, and education level.
