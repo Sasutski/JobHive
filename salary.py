@@ -1,5 +1,6 @@
 # https://www.kaggle.com/datasets/amirmahdiabbootalebi/salary-by-job-title-and-country 
 # Using this dataset to get the salary of a particular job title in a particular country, age, gender, country, years of experience, and education level.
+# https://www.kaggle.com/datasets/arshkon/linkedin-job-postings
 
 import pandas as pd
 from sklearn.model_selection import train_test_split
@@ -75,3 +76,36 @@ except ValueError:
 
 # Print the model's performance
 print(f"Model R^2 score: {pipeline.score(x_test, y_test)}")
+
+
+
+def predict_salary(age, gender, education_level, job_title, years_of_experience, country, race, senior):
+    # Create a DataFrame with the input data
+    input_data = pd.DataFrame({
+        'Age': [age],
+        'Gender': [gender],
+        'Education Level': [education_level],
+        'Job Title': [job_title],
+        'Years of Experience': [years_of_experience],
+        'Country': [country],
+        'Race': [race],
+        'Senior': [senior]
+    })
+
+    # Use the pipeline to preprocess the input data and make a prediction
+    predicted_salary = pipeline.predict(input_data)
+    
+    return predicted_salary[0]
+
+# Example usage
+age = 30
+gender = 'Male'
+education_level = 4
+job_title = 'Software Engineer'
+years_of_experience = 1
+country = 'Korea'
+race = 'Asian'
+senior = 0
+
+predicted_salary = predict_salary(age, gender, education_level, job_title, years_of_experience, country, race, senior)
+print(f"Predicted Salary: ${predicted_salary:.0f}")
