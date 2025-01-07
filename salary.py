@@ -10,20 +10,14 @@ from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 
+
 # Set display options for better readability
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', 10)
 
 data = pd.read_csv("data/Salary.csv")
 
-# Print only the first 5 rows of the dataset
-print(data.head()) 
 
-# Print concise summary of the dataset
-print(data.info()) 
-
-# Print summary statistics of the dataset
-print(data.describe())  
 
 # Fill missing values with the mean of the numeric columns
 numeric_columns = data.select_dtypes(include=['float64', 'int64']).columns
@@ -74,10 +68,21 @@ try: # Right now has a classification error due to multiclass and continuous tar
 except ValueError:
     pass
 
-# Print the model's performance
-print(f"Model R^2 score: {pipeline.score(x_test, y_test)}")
 
 
+
+def model():
+    # Print only the first 5 rows of the dataset
+    print(data.head()) 
+
+    # Print concise summary of the dataset
+    print(data.info()) 
+
+    # Print summary statistics of the dataset
+    print(data.describe())  
+
+    # Print the model's performance
+    print(f"Model R^2 score: {pipeline.score(x_test, y_test)}")
 
 def predict_salary(age, gender, education_level, job_title, years_of_experience, country, race, senior):
     # Create a DataFrame with the input data
@@ -97,15 +102,8 @@ def predict_salary(age, gender, education_level, job_title, years_of_experience,
     
     return predicted_salary[0]
 
-# Example usage
-age = 30
-gender = 'Male'
-education_level = 4
-job_title = 'Software Engineer'
-years_of_experience = 1
-country = 'Korea'
-race = 'Asian'
-senior = 0
 
-predicted_salary = predict_salary(age, gender, education_level, job_title, years_of_experience, country, race, senior)
-print(f"Predicted Salary: ${predicted_salary:.0f}")
+if __name__ == "__main__":
+    model()
+    predict_salary()
+    
