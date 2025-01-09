@@ -1,5 +1,12 @@
 import tkinter as tk
-from GUIs.model import predict_salary, model
+try:
+    from GUIs.model import predict_salary
+except ImportError:
+    pass
+try:
+    from model import predict_salary
+except ImportError:
+    pass
 
 def create_gui(parent_frame=None):
     def on_predict():
@@ -65,5 +72,4 @@ def create_gui(parent_frame=None):
         root.mainloop()
 
 if __name__ == "__main__":
-    model()
     create_gui()
