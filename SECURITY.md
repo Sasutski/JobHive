@@ -10,7 +10,5 @@ currently being supported with security updates.
 | < 1.0   | :x:                |
 
 ## Reporting a Vulnerability
-
-
 Report by opening an issue or directly emailing us!
 You can expect an answer by at least 3-5 Business Days.
