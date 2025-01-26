@@ -1,8 +1,3 @@
-Requests==2.32.3
-numpy==2.2.1
-pandas==2.2.3
-scikit-learn==1.6.0
-matplotlib==3.10.0
-google-generativeai==0.8.3
-tkhtmlview==0.3.1
-markdown==3.7.0
+pyrebase4
+requests
+setuptools
