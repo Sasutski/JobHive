@@ -37,7 +37,11 @@ def load_token():
     return False
 
 def logIn():
-    global user_token
+    global firsttime, user_token
+    if load_token():
+        print("Welcome back to JobHive!")
+        return
+
     email = input("Enter your email address : ")
     password = input("Enter Your password : ")
     try:
@@ -95,7 +99,7 @@ def details():
 
 def logout():
     global user_token
-    if user_token:
+    if load_token():
         user_token = None
         if os.path.exists(TOKEN_FILE):
             os.remove(TOKEN_FILE)
@@ -106,7 +110,8 @@ def logout():
 def is_logged_in():
     return user_token is not None
 
-signUp()
+if __name__ == "__main__":
+    signUp()
 
 
     

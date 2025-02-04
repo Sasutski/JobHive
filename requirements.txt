@@ -1,3 +1,4 @@
 pyrebase4
 requests
 setuptools
+Pillow
