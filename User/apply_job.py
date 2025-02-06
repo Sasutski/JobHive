@@ -1,1 +1,1 @@
-print('i love james my bames bames')
+print('i love james')
