@@ -1,5 +1,5 @@
 # Job Hunting App
-Hello I am Jonaz
+
 ## Overview
 The Job Hunting App is designed to simplify and enhance the job search experience for job seekers. It addresses common frustrations such as lack of feedback from employers, difficulty in tracking applications, and challenges in salary negotiation. By providing a centralized platform, the app aims to make job hunting more efficient and less stressful.
 
