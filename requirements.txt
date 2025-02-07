@@ -4,3 +4,5 @@ setuptools
 Pillow
 openai
 python-dotenv
+google-genai
+PyPDF2
