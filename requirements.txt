@@ -3,3 +3,4 @@ requests
 setuptools
 Pillow
 openai
+python-dotenv
