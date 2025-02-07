@@ -1,16 +1,8 @@
 import os
-from dotenv import load_dotenv
-from pathlib import Path
 from openai import OpenAI  
-
-# Define the absolute path to your .env file
-dotenv_path = Path("/Users/jonazho/Documents/GitHub/JobHive/ENV's/API.env")
-
-# Load .env file from the specified path
-load_dotenv(dotenv_path=dotenv_path)
-
+#run this code in terminal export AIKEY="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"
 client = OpenAI(
-   api_key = os.getenv("AIKey")
+   api_key = os.getenv("AIKEY")
 )
 
 chat_completion = client.chat.completions.create(
@@ -22,7 +14,5 @@ chat_completion = client.chat.completions.create(
    ],
    model="gpt-4o"
 )
-
-
 # Print to check if it's loaded
-
+print(chat_completion)
