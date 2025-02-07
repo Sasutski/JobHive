@@ -1,7 +1,7 @@
 # Dictionary to store all job listings
 hiring_jobs = {}
 
-def add_job_listing(title, requirements, experience_range, salary_ranges, locations):
+def add_job_listing(title, requirements, experience_range, salary_ranges, locations, tags=None):
     """
     Add a new job listing to the hiring_jobs dictionary
     
@@ -11,6 +11,7 @@ def add_job_listing(title, requirements, experience_range, salary_ranges, locati
     - experience_range (str): Required experience range (e.g., '1-5 years')
     - salary_ranges (dict): Dictionary containing entry_level, mid_level, and senior_level salary ranges
     - locations (list): List of job locations
+    - tags (list): List of keywords describing the job (e.g., ['python', 'web development', 'remote'])
     """
     if not all([title, requirements, experience_range, salary_ranges, locations]):
         raise ValueError("All parameters are required")
@@ -19,11 +20,15 @@ def add_job_listing(title, requirements, experience_range, salary_ranges, locati
         for level in ['entry_level', 'mid_level', 'senior_level']):
         raise ValueError("salary_ranges must be a dictionary with entry_level, mid_level, and senior_level")
     
+    if tags is not None and not isinstance(tags, list):
+        raise ValueError("tags must be a list of strings")
+    
     hiring_jobs[title] = {
         "requirements": requirements,
         "experience_range": experience_range,
         "salary_range": salary_ranges,
-        "locations": locations
+        "locations": locations,
+        "tags": tags or []
     }
     return True
 
@@ -60,13 +65,13 @@ def update_job_listing(title, field, value):
     
     Parameters:
     - title (str): Job title to update
-    - field (str): Field to update (requirements, experience_range, salary_range, or locations)
+    - field (str): Field to update (requirements, experience_range, salary_range, locations, or tags)
     - value: New value for the field
     """
     if title not in hiring_jobs:
         return False
         
-    if field not in ["requirements", "experience_range", "salary_range", "locations"]:
+    if field not in ["requirements", "experience_range", "salary_range", "locations", "tags"]:
         return False
         
     hiring_jobs[title][field] = value
