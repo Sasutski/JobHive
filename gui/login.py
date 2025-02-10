@@ -112,3 +112,8 @@ def is_logged_in():
 
 if __name__ == "__main__":
     signUp()
+
+'''
+Modify `logIn` and `signUp` functions to work with Tkinter UI
+Add Tkinter UI elements for user login and registration
+'''
