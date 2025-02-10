@@ -57,3 +57,9 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+'''
+Modify `compare_resumes` function to return feedback as a string
+Add a function to handle resume upload and feedback display in Tkinter UI
+'''
