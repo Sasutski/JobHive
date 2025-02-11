@@ -6,7 +6,6 @@ import os
 from tkinter import *
 from tkinter import ttk
 from tkinter import messagebox
-from pathlib import Path
 
 # Firebase configuration for project authentication and database access
 config = {
@@ -267,9 +266,6 @@ class LoginApp:
         y = (screen_height - height) // 2
         window.geometry(f"{width}x{height}+{x}+{y}")
 
-# Update the TOKEN_FILE path definition to be platform-independent
-TOKEN_FILE = os.path.join(Path.home(), '.jobhive', 'user_token.json')
-
 def save_token(token, role):
     """Save user authentication token and role to file
     
@@ -282,13 +278,6 @@ def save_token(token, role):
         os.makedirs(token_dir, exist_ok=True)
     with open(TOKEN_FILE, 'w') as f:
         json.dump({'token': token, 'role': role}, f)
-
-import logging
-
-# Configure logging
-logging.basicConfig(level=logging.DEBUG,
-                   format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger('JobHive.login')
 
 def load_token():
     """Load and validate saved authentication token
