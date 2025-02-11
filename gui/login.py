@@ -28,7 +28,8 @@ db = firebase.database()  # Realtime database instance
 firsttime = False  # Flag to track if user just registered
 user_token = None  # Current user's authentication token
 user_role = None   # Current user's role (applicant/employer)
-TOKEN_FILE = 'data/user_token.json'  # File to persist user session
+# File to persist user session
+TOKEN_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'user_token.json')
 
 class LoginApp:
     """Main login application class that handles the GUI and authentication flow"""
@@ -272,9 +273,10 @@ def save_token(token, role):
         token (str): User's Firebase authentication token
         role (str): User's role (applicant/employer)
     """
-    token_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), TOKEN_FILE)
-    os.makedirs(os.path.dirname(token_path), exist_ok=True)
-    with open(token_path, 'w') as f:
+    token_dir = os.path.dirname(TOKEN_FILE)
+    if not os.path.exists(token_dir):
+        os.makedirs(token_dir, exist_ok=True)
+    with open(TOKEN_FILE, 'w') as f:
         json.dump({'token': token, 'role': role}, f)
 
 def load_token():
@@ -286,12 +288,11 @@ def load_token():
     global user_token, user_role
     try:
         # Check if token file exists
-        token_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), TOKEN_FILE)
-        if not os.path.exists(token_path):
+        if not os.path.exists(TOKEN_FILE):
             return False
             
         # Load token and role from file
-        with open(token_path, 'r') as f:
+        with open(TOKEN_FILE, 'r') as f:
             data = json.load(f)
             user_token = data.get('token')
             user_role = data.get('role')
