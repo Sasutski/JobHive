@@ -175,18 +175,20 @@ class LoginApp:
             """Handle user registration process"""
             # Collect form data
             fields = {
-                'email': email_var.get(),
-                'password': password_var.get(),
-                'role': role_var.get(),
-                'name': name_var.get(),
-                'age': age_var.get(),
-                'location': location_var.get(),
-                'education': education_var.get()
+                'email': email_var.get().strip(),
+                'password': password_var.get().strip(),
+                'role': role_var.get().strip(),
+                'name': name_var.get().strip(),
+                'age': age_var.get().strip(),
+                'location': location_var.get().strip(),
+                'education': education_var.get().strip()
             }
             
-            # Validate all fields are filled
-            if not all(fields.values()):
-                messagebox.showerror("Error", "Please fill in all fields")
+            # Check each field individually
+            empty_fields = [field for field, value in fields.items() if not value]
+            if empty_fields:
+                error_message = "Please fill in the following fields:\n- " + "\n- ".join(empty_fields)
+                messagebox.showerror("Error", error_message)
                 return
             
             try:

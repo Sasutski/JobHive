@@ -6,7 +6,7 @@ Integrate `ai/resume_review.py` for resume feedback
 
 from tkinter import *
 from tkinter import ttk
-from login import load_token, get_user_role
+from login import load_token, get_user_role, LoginApp
 
 def calculate(*args):
     try:
@@ -15,17 +15,26 @@ def calculate(*args):
     except ValueError:
         pass
 
-
-if load_token():
-    user_role = get_user_role()
-    if user_role:
-        print(f"Welcome back to JobHive! You are logged in as {user_role}")
-    else:
-        print("Error: Unable to retrieve user role")
-
-
 root = Tk()
 root.title("Dashboard")
+
+# Check for user authentication
+if not load_token():
+    # No valid token found, use the root window for login
+    login_app = LoginApp(root)
+    root.mainloop()
+    
+    # After login window closes, check token again
+    if not load_token():
+        root.destroy()
+        exit()
+
+# User is authenticated, get role and continue
+user_role = get_user_role()
+if user_role:
+    print(f"Welcome back to JobHive! You are logged in as {user_role}")
+else:
+    print("Error: Unable to retrieve user role")
 
 mainframe = ttk.Frame(root, padding="3 3 12 12")
 mainframe.grid(column=0, row=0, sticky=(N, W, E, S))
