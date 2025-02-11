@@ -272,7 +272,9 @@ def save_token(token, role):
         token (str): User's Firebase authentication token
         role (str): User's role (applicant/employer)
     """
-    with open(TOKEN_FILE, 'w') as f:
+    token_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), TOKEN_FILE)
+    os.makedirs(os.path.dirname(token_path), exist_ok=True)
+    with open(token_path, 'w') as f:
         json.dump({'token': token, 'role': role}, f)
 
 def load_token():
@@ -284,7 +286,8 @@ def load_token():
     global user_token, user_role
     try:
         # Check if token file exists
-        if not os.path.exists(TOKEN_FILE):
+        token_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), TOKEN_FILE)
+        if not os.path.exists(token_path):
             return False
             
         # Load token and role from file
