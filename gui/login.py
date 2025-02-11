@@ -39,16 +39,20 @@ class LoginApp:
         self.create_widgets()
     
     def setup_window(self, title, width, height):
-        """Configure the window properties including size and position
-        
-        Args:
-            title (str): Window title
-            width (int): Window width in pixels
-            height (int): Window height in pixels
-        """
         self.root.title(title)
-        self.root.configure(bg='#f0f0f0')
+        self.root.configure(bg='#2c3e50')
         self.root.focus_force()
+        
+        # Set custom style
+        style = ttk.Style()
+        style.configure('TFrame', background='#2c3e50')
+        style.configure('TLabel', background='#2c3e50', font=('Helvetica', 10), foreground='#ecf0f1')
+        style.configure('TButton', font=('Helvetica', 10, 'bold'), padding=8)
+        style.configure('Title.TLabel', font=('Helvetica', 24, 'bold'), foreground='#ecf0f1')
+        style.configure('TEntry', padding=6, relief='solid')
+        style.configure('Focus.TEntry', padding=6, relief='solid', borderwidth=2)
+        style.configure('Accent.TButton', background='#3498db', foreground='#ffffff')
+        style.configure('Secondary.TButton', background='#95a5a6', foreground='#ffffff')
         
         # Center window on screen
         screen_width = self.root.winfo_screenwidth()
@@ -56,6 +60,12 @@ class LoginApp:
         x = (screen_width - width) // 2
         y = (screen_height - height) // 2
         self.root.geometry(f"{width}x{height}+{x}+{y}")
+        
+        # Add window shadow and border
+        self.root.overrideredirect(False)
+        self.root.attributes('-alpha', 0.0)
+        self.root.update_idletasks()
+        self.root.attributes('-alpha', 1.0)
     
     def create_entry_field(self, parent, label_text, row, show=None):
         """Create a labeled entry field in the form
@@ -69,31 +79,49 @@ class LoginApp:
         Returns:
             StringVar: Variable bound to the entry field
         """
-        ttk.Label(parent, text=label_text).grid(row=row, column=0, sticky=W, pady=5)
+        ttk.Label(parent, text=label_text).grid(row=row, column=0, sticky=W, pady=8)
         var = StringVar()
         entry = ttk.Entry(parent, textvariable=var, width=30, show=show)
-        entry.grid(row=row, column=1, pady=5)
+        entry.grid(row=row, column=1, pady=8, padx=(10, 0))
+        
+        # Add focus animation
+        def on_focus_in(event):
+            entry.configure(style='Focus.TEntry')
+        def on_focus_out(event):
+            entry.configure(style='TEntry')
+            
+        entry.bind('<FocusIn>', on_focus_in)
+        entry.bind('<FocusOut>', on_focus_out)
         return var
     
     def create_widgets(self):
         """Create and arrange all GUI widgets for the login window"""
-        # Create main frame with padding
-        main_frame = ttk.Frame(self.root, padding="20")
+        # Create main frame with padding and shadow effect
+        main_frame = ttk.Frame(self.root, padding="30 20 30 20", style='TFrame')
         main_frame.place(relx=0.5, rely=0.5, anchor=CENTER)
         
-        # Add title label
-        ttk.Label(main_frame, text="Welcome to JobHive", font=("Helvetica", 16, "bold")).grid(row=0, column=0, columnspan=2, pady=(0, 20))
+        # Add title label with custom style
+        title_label = ttk.Label(main_frame, text="Welcome to JobHive", style='Title.TLabel')
+        title_label.grid(row=0, column=0, columnspan=2, pady=(0, 30))
         
-        # Create email and password entry fields
+        # Create styled email and password entry fields
         self.email_var = self.create_entry_field(main_frame, "Email:", 1)
         self.password_var = self.create_entry_field(main_frame, "Password:", 2, show="*")
         
-        # Create button frame and add login/signup buttons
-        button_frame = ttk.Frame(main_frame)
-        button_frame.grid(row=3, column=0, columnspan=2, pady=20)
+        # Create button frame with modern styling
+        button_frame = ttk.Frame(main_frame, style='TFrame')
+        button_frame.grid(row=3, column=0, columnspan=2, pady=30)
         
-        ttk.Button(button_frame, text="Login", command=self.login).grid(row=0, column=0, padx=5)
-        ttk.Button(button_frame, text="Sign Up", command=self.show_signup_window).grid(row=0, column=1, padx=5)
+        # Style buttons
+        style = ttk.Style()
+        style.configure('Accent.TButton', background='#3498db', foreground='white')
+        style.configure('Secondary.TButton', background='#95a5a6')
+        
+        login_btn = ttk.Button(button_frame, text="Login", command=self.login, style='Accent.TButton')
+        signup_btn = ttk.Button(button_frame, text="Sign Up", command=self.show_signup_window, style='Secondary.TButton')
+        
+        login_btn.grid(row=0, column=0, padx=10)
+        signup_btn.grid(row=0, column=1, padx=10)
     
     def handle_auth_error(self, error):
         """Handle Firebase authentication errors and display appropriate messages
