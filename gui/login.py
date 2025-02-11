@@ -283,6 +283,13 @@ def save_token(token, role):
     with open(TOKEN_FILE, 'w') as f:
         json.dump({'token': token, 'role': role}, f)
 
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.DEBUG,
+                   format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger('JobHive.login')
+
 def load_token():
     """Load and validate saved authentication token
     

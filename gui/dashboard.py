@@ -8,40 +8,33 @@ Integrate `ai/resume_review.py` for resume feedback
 
 from tkinter import *
 from tkinter import ttk, filedialog
-try:
+import logging
 
-    from login import load_token, get_user_role, LoginApp
-except:
-    pass
+# Configure logging
+logging.basicConfig(level=logging.DEBUG,
+                   format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger('JobHive.dashboard')
+
 try:
-    from .login import load_token, get_user_role, LoginApp
+    from login import load_token, get_user_role, LoginApp
+    logger.debug("Imported login modules directly")
 except:
-    pass
+    try:
+        from .login import load_token, get_user_role, LoginApp
+        logger.debug("Imported login modules with relative import")
+    except Exception as e:
+        logger.error(f"Failed to import login modules: {str(e)}")
+        pass
 
 class DashboardApp:
     def __init__(self, root):
+        logger.debug("Initializing DashboardApp")
         self.root = root
         self.setup_window()
         self.create_widgets()
 
-    def setup_window(self):
-        self.root.title("JobHive Dashboard")
-        self.root.configure(bg='#f5f6fa')
-        
-        # Set custom style
-        style = ttk.Style()
-        style.configure('TFrame', background='#2c3e50')
-        style.configure('TLabel', background='#2c3e50', font=('Helvetica', 10), foreground='#ffffff')
-        style.configure('TButton', font=('Helvetica', 10, 'bold'), padding=5, foreground='#ffffff')
-        style.configure('Header.TLabel', font=('Helvetica', 24, 'bold'), foreground='#ffffff')
-        style.configure('Section.TLabel', font=('Helvetica', 16, 'bold'), foreground='#ffffff')
-        
-        # Make window responsive
-        self.root.columnconfigure(0, weight=1)
-        self.root.rowconfigure(0, weight=1)
-        self.root.configure(bg='#2c3e50')
-
     def create_widgets(self):
+        logger.debug("Creating dashboard widgets")
         # Create main container
         main_frame = ttk.Frame(self.root, padding="20")
         main_frame.grid(row=0, column=0, sticky=(N, W, E, S))
@@ -98,15 +91,20 @@ class DashboardApp:
         pass
 
 def main():
+    logger.debug("Starting dashboard main()")
     root = Tk()
     
     # Check for user authentication
+    logger.debug("Checking for existing token")
     if not load_token():
+        logger.info("No valid token found, showing login window")
         login_app = LoginApp(root)
         root.mainloop()
         
-        # If still no token after login attempt, exit gracefully
+        # Check token again after login attempt
+        logger.debug("Checking token after login attempt")
         if not load_token():
+            logger.warning("Still no valid token after login attempt, exiting")
             try:
                 root.quit()
                 root.destroy()
@@ -114,7 +112,7 @@ def main():
                 pass
             return
     
-    # Start dashboard
+    logger.info("Valid token found, starting dashboard")
     app = DashboardApp(root)
     root.mainloop()
 
