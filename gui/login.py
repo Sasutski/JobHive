@@ -6,6 +6,7 @@ import os
 from tkinter import *
 from tkinter import ttk
 from tkinter import messagebox
+from pathlib import Path
 
 # Firebase configuration for project authentication and database access
 config = {
@@ -265,6 +266,9 @@ class LoginApp:
         x = (screen_width - width) // 2
         y = (screen_height - height) // 2
         window.geometry(f"{width}x{height}+{x}+{y}")
+
+# Update the TOKEN_FILE path definition to be platform-independent
+TOKEN_FILE = os.path.join(Path.home(), '.jobhive', 'user_token.json')
 
 def save_token(token, role):
     """Save user authentication token and role to file

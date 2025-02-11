@@ -4,9 +4,19 @@ Integrate `gui/login.py` for user login and registration
 Integrate `ai/resume_review.py` for resume feedback
 '''
 
+'''Initialize Tkinter UI and launch the dashboard'''
+
 from tkinter import *
 from tkinter import ttk, filedialog
-from login import load_token, get_user_role, LoginApp
+try:
+
+    from login import load_token, get_user_role, LoginApp
+except:
+    pass
+try:
+    from .login import load_token, get_user_role, LoginApp
+except:
+    pass
 
 class DashboardApp:
     def __init__(self, root):
