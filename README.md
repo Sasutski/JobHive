@@ -11,3 +11,4 @@ JobHive is a web application designed to help job seekers find and apply to job 
 ## Technologies Used
 - Strictly Python
 
+# IDKKKKK
