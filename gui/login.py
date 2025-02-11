@@ -291,7 +291,7 @@ def load_token():
             return False
             
         # Load token and role from file
-        with open(TOKEN_FILE, 'r') as f:
+        with open(token_path, 'r') as f:
             data = json.load(f)
             user_token = data.get('token')
             user_role = data.get('role')
