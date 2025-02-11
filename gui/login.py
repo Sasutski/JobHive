@@ -43,16 +43,24 @@ class LoginApp:
         self.root.configure(bg='#2c3e50')
         self.root.focus_force()
         
-        # Set custom style
+        # Set custom style with modern color scheme
         style = ttk.Style()
         style.configure('TFrame', background='#2c3e50')
-        style.configure('TLabel', background='#2c3e50', font=('Helvetica', 10), foreground='#ecf0f1')
-        style.configure('TButton', font=('Helvetica', 10, 'bold'), padding=8)
-        style.configure('Title.TLabel', font=('Helvetica', 24, 'bold'), foreground='#ecf0f1')
-        style.configure('TEntry', padding=6, relief='solid')
-        style.configure('Focus.TEntry', padding=6, relief='solid', borderwidth=2)
+        style.configure('TLabel', background='#2c3e50', font=('Helvetica', 11), foreground='#ffffff')
+        style.configure('TButton', font=('Helvetica', 11, 'bold'), padding=6)
+        style.configure('Title.TLabel', font=('Helvetica', 24, 'bold'), foreground='#ffffff')
+        style.configure('TEntry', padding=8, relief='flat', foreground='#ffffff', background='#34495e')
+        style.configure('Focus.TEntry', padding=8, relief='solid', foreground='#ffffff', background='#34495e')
+        
+        # Configure button styles
         style.configure('Accent.TButton', background='#3498db', foreground='#ffffff')
-        style.configure('Secondary.TButton', background='#95a5a6', foreground='#ffffff')
+        style.configure('Secondary.TButton', background='#2c3e50', foreground='#ffffff')
+        style.map('Accent.TButton',
+                  background=[('active', '#2980b9'), ('pressed', '#2980b9')],
+                  relief=[('pressed', 'sunken')])
+        style.map('Secondary.TButton',
+                  background=[('active', '#34495e'), ('pressed', '#34495e')],
+                  relief=[('pressed', 'sunken')])
         
         # Center window on screen
         screen_width = self.root.winfo_screenwidth()
@@ -174,12 +182,12 @@ class LoginApp:
         signup.title("JobHive Sign Up")
         self.setup_window_for_toplevel(signup, 400, 500)
         
-        # Create main frame for signup form
-        main_frame = ttk.Frame(signup, padding="20")
+        # Create main frame for signup form with modern styling
+        main_frame = ttk.Frame(signup, padding="30 20 30 20", style='TFrame')
         main_frame.place(relx=0.5, rely=0.5, anchor=CENTER)
         
-        # Add form title
-        ttk.Label(main_frame, text="Create Account", font=("Helvetica", 16, "bold")).grid(row=0, column=0, columnspan=2, pady=(0, 20))
+        # Add form title with custom style
+        ttk.Label(main_frame, text="Create Account", style='Title.TLabel').grid(row=0, column=0, columnspan=2, pady=(0, 30))
         
         # Create form fields
         email_var = self.create_entry_field(main_frame, "Email:", 1)
@@ -246,7 +254,7 @@ class LoginApp:
             width (int): Window width
             height (int): Window height
         """
-        window.configure(bg='#f0f0f0')
+        window.configure(bg='#2c3e50')
         window.transient(self.root)
         window.grab_set()
         
