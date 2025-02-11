@@ -28,7 +28,7 @@ db = firebase.database()  # Realtime database instance
 firsttime = False  # Flag to track if user just registered
 user_token = None  # Current user's authentication token
 user_role = None   # Current user's role (applicant/employer)
-TOKEN_FILE = 'user_token.json'  # File to persist user session
+TOKEN_FILE = 'data/user_token.json'  # File to persist user session
 
 class LoginApp:
     """Main login application class that handles the GUI and authentication flow"""
