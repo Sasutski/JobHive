@@ -5,10 +5,5 @@ Pillow
 python-dotenv
 google-genai
 PyPDF2
-<<<<<<< HEAD
 markdown
 tkhtmlview
-=======
-tkinter
-
->>>>>>> da6f19505a9c74c423db1e3f839970140a819c37
