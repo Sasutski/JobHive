@@ -73,13 +73,10 @@ class DashboardApp:
             ttk.Button(job_frame, text="My Applications", command=self.view_applications).pack(side=LEFT, padx=5)
 
     def upload_resume(self):
-        file_path = filedialog.askopenfilename(
-            title="Select Resume",
-            filetypes=[("PDF files", "*.pdf"), ("Word files", "*.docx")]
-        )
-        if file_path:
-            # TODO: Implement resume upload logic
-            pass
+        from ai.resume_review import handle_resume_upload
+        # Use the model resume from assets
+        model_resume_path = 'assets/resumes/test_model_resume.pdf'
+        handle_resume_upload(model_resume_path)
 
     def view_feedback(self):
         # TODO: Implement feedback view logic
