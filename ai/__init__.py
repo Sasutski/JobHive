@@ -37,9 +37,16 @@ def upload_pdf():
     else:
         messagebox.showwarning("No File", "No file selected. Please try again.")
 
+def analyze_resume():
+    # This function will trigger the analysis process (you can link this to your `compare_resumes` logic)
+    feedback = "This is where the feedback will be displayed after analysis."
+    messagebox.showinfo("Resume Analysis", feedback)
+
 # Create and pack the upload button
 upload_button = tk.Button(root, text="Upload Resume (PDF)", font=("Roboto", 14), command=upload_pdf)
 upload_button.pack(pady=20)
-
+# Create and pack the "Analyze Resume" button
+analyze_button = tk.Button(root, text="Analyze Resume", font=("Roboto", 14), command=analyze_resume)
+analyze_button.pack(pady=5)
 # Run the application
 root.mainloop()
