@@ -6,3 +6,4 @@ openai
 python-dotenv
 google-genai
 PyPDF2
+tkinter
