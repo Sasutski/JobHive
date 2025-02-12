@@ -5,18 +5,11 @@ Integrate `ai/resume_review.py` for resume feedback
 '''
 
 '''Initialize Tkinter UI and launch the dashboard'''
-
+import sys
 from tkinter import *
 from tkinter import ttk, filedialog
-try:
-
-    from login import load_token, get_user_role, LoginApp
-except:
-    pass
-try:
-    from .login import load_token, get_user_role, LoginApp
-except:
-    pass
+from .login import load_token, get_user_role, LoginApp
+from ai.resume_review import handle_resume_upload
 
 class DashboardApp:
     def __init__(self, root):
@@ -58,8 +51,7 @@ class DashboardApp:
         resume_frame = ttk.LabelFrame(main_frame, text="Resume Management", padding="10")
         resume_frame.grid(row=1, column=0, sticky=(W, E), pady=(0, 20))
         
-        ttk.Button(resume_frame, text="Upload Resume", command=self.upload_resume).pack(side=LEFT, padx=5)
-        ttk.Button(resume_frame, text="View Feedback", command=self.view_feedback).pack(side=LEFT, padx=5)
+        ttk.Button(resume_frame, text="Resume Review", command=self.resume_review).pack(side=LEFT, padx=5)
 
         # Job section
         job_frame = ttk.LabelFrame(main_frame, text="Job Management", padding="10")
@@ -72,15 +64,8 @@ class DashboardApp:
             ttk.Button(job_frame, text="Search Jobs", command=self.search_jobs).pack(side=LEFT, padx=5)
             ttk.Button(job_frame, text="My Applications", command=self.view_applications).pack(side=LEFT, padx=5)
 
-    def upload_resume(self):
-        from ai.resume_review import handle_resume_upload
-        # Use the model resume from assets
-        model_resume_path = 'assets/resumes/test_model_resume.pdf'
-        handle_resume_upload(model_resume_path)
-
-    def view_feedback(self):
-        # TODO: Implement feedback view logic
-        pass
+    def resume_review(self):
+        handle_resume_upload()
 
     def post_job(self):
         # TODO: Implement job posting logic
