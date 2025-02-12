@@ -2,9 +2,8 @@ pyrebase4
 requests
 setuptools
 Pillow
-openai
 python-dotenv
 google-genai
 PyPDF2
 tkinter
-nltk
+
