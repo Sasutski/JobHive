@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 from google import genai
 import PyPDF2
 
@@ -140,3 +141,5 @@ def handle_resume_upload(model_resume_path=None):
 
 if __name__ == "__main__":
     handle_resume_upload()
+=======
+>>>>>>> da6f19505a9c74c423db1e3f839970140a819c37
