@@ -1,6 +1,6 @@
 '''Initialize Tkinter UI and launch the dashboard'''
 from tkinter import Tk
-from GUI.dashboard import DashboardApp
+from gui.dashboard import DashboardApp
 
 def main():
     root = Tk()

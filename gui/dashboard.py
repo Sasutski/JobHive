@@ -9,7 +9,7 @@ import sys
 from tkinter import *
 from tkinter import ttk, filedialog
 from .login import load_token, get_user_role, LoginApp
-from ai.resume_review import handle_resume_upload
+
 
 class DashboardApp:
     def __init__(self, root):
@@ -65,6 +65,8 @@ class DashboardApp:
             ttk.Button(job_frame, text="My Applications", command=self.view_applications).pack(side=LEFT, padx=5)
 
     def resume_review(self):
+
+        # Let handle_resume_upload manage the model resume path
         handle_resume_upload()
 
     def post_job(self):

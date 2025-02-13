@@ -3,7 +3,7 @@ requests
 setuptools
 Pillow
 python-dotenv
-google-genai
+google-generativeai
 PyPDF2
 markdown
 tkhtmlview
