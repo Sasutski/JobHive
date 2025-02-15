@@ -1,9 +1,6 @@
 import os
 from google import genai
 import base64
-from tkinter import *
-from tkinter import ttk, filedialog
-from tkhtmlview import HTMLLabel
 import markdown
 
 # Configure Generative AI API
@@ -84,56 +81,3 @@ def review_resume():
     # Render the markdown output
     render_markdown_in_tkinter(markdown_output)
 
-def main_gui(parent_frame=None):
-    global candidate_resume_var, employer_model_resume_var, result_var, result_text
-
-    if parent_frame is None:
-        root = Tk()  # Create a standalone Tkinter window
-    else:
-        root = parent_frame  # Use the provided parent frame for embedding
-
-    # Variables for storing file paths and results
-    candidate_resume_var = StringVar()
-    employer_model_resume_var = StringVar()
-    result_var = StringVar()
-
-    # Main content frame
-    mainframe = ttk.Frame(root, padding="3 3 12 12")
-    mainframe.grid(column=0, row=0, sticky=(N, W, E, S))
-    root.columnconfigure(0, weight=1)
-    root.rowconfigure(0, weight=1)
-
-    # Candidate Resume Selection
-    ttk.Label(mainframe, text="Candidate's Resume:").grid(column=1, row=1, sticky=W)
-    ttk.Entry(mainframe, width=50, textvariable=candidate_resume_var).grid(column=2, row=1, sticky=(W, E))
-    ttk.Button(mainframe, text="Browse", command=lambda: select_file(candidate_resume_var)).grid(column=3, row=1, sticky=W)
-
-    # Employer Model Resume Selection
-    ttk.Label(mainframe, text="Employer's Model Resume:").grid(column=1, row=2, sticky=W)
-    ttk.Entry(mainframe, width=50, textvariable=employer_model_resume_var).grid(column=2, row=2, sticky=(W, E))
-    ttk.Button(mainframe, text="Browse", command=lambda: select_file(employer_model_resume_var)).grid(column=3, row=2, sticky=W)
-
-    # Review Resume Button
-    ttk.Button(mainframe, text="Review Resume", command=review_resume).grid(column=2, row=3, sticky=W)
-
-    # Result Frame
-    result_frame = ttk.Frame(mainframe)
-    result_frame.grid(column=1, row=4, columnspan=3, sticky=(W, E, N, S))
-    result_frame.columnconfigure(0, weight=1)
-    result_frame.rowconfigure(0, weight=1)
-
-    # Create a Frame to hold the result text and scrollbar
-    result_text = Frame(result_frame, bg='black')
-    result_text.grid(column=0, row=0, sticky=(N, S, E, W))
-    result_text.columnconfigure(0, weight=1)
-    result_text.rowconfigure(0, weight=1)
-
-    # Scrollbar for result text
-    scrollbar = ttk.Scrollbar(result_frame, orient=VERTICAL)
-    scrollbar.grid(column=1, row=0, sticky=(N, S))
-
-    if parent_frame is None:
-        root.mainloop()  # Run the main loop only in standalone mode
-
-if __name__ == "__main__":
-    main_gui()
