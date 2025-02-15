@@ -4,6 +4,7 @@ setuptools
 Pillow
 python-dotenv
 google-generativeai
+google-genai
 PyPDF2
 markdown
 tkhtmlview

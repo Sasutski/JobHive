@@ -1,83 +1,74 @@
 import os
+from pathlib import Path
 from google import genai
 import base64
-import markdown
+from google.genai import types  # helper methods for constructing Parts
 
 # Configure Generative AI API
 API_KEY = 'AIzaSyBlK25lcxrb9krNnh0PwDFyyae9Vn6rNqA'
 client = genai.Client(api_key=API_KEY)
 
-# Function to select a file
-def select_file(var):
-    file_path = filedialog.askopenfilename(filetypes=[("PDF files", "*.pdf")])
-    var.set(file_path)
+def select_resume():
+    """Get file paths from user input in terminal."""
+    while True:
+        candidate_resume_path = "assets/resumes/test_candidate_resume.pdf".strip()
+        if os.path.exists(candidate_resume_path) and candidate_resume_path.endswith('.pdf'):
+            break
+        print("Invalid path. Please enter a valid path to a PDF file.")
 
-# Function to render markdown in Tkinter
-def render_markdown_in_tkinter(output_text):
-    """Render markdown text in a Tkinter widget."""
-    # Create a Text widget if it doesn't exist
-    if not hasattr(result_text, 'text_widget'):
-        result_text.text_widget = Text(result_text, wrap=WORD, bg='black', fg='white', font=('Helvetica', 10))
-        result_text.text_widget.pack(fill=BOTH, expand=True)
-        result_text.text_widget.configure(state='normal')
-    
-    # Clear existing content
-    result_text.text_widget.delete('1.0', END)
-    
-    # Insert new content
-    html_content = markdown.markdown(output_text)
-    result_text.text_widget.insert('1.0', html_content)
-    
-    # Make it read-only to prevent editing
-    result_text.text_widget.configure(state='disabled')
-    html_content = f"<div style='color: white;'>{html_content}</div>"
-    result_text.set_html(html_content)
+    while True:
+        employer_resume_path = "assets/resumes/test_model_resume.pdf".strip()
+        if os.path.exists(employer_resume_path) and employer_resume_path.endswith('.pdf'):
+            break
+        print("Invalid path. Please enter a valid path to a PDF file.")
 
-# Function to review the resumes
-def review_resume():
-    candidate_resume_path = candidate_resume_var.get()
-    employer_model_resume_path = employer_model_resume_var.get()
+    return candidate_resume_path, employer_resume_path
 
-    if not candidate_resume_path or not employer_model_resume_path:
-        result_var.set("Please select both resumes.")
-        return
-
-    # Read and encode the candidate's resume
-    with open(candidate_resume_path, "rb") as doc_file:
-        doc_data = base64.standard_b64encode(doc_file.read()).decode("utf-8")
-
-    # Read and encode the employer's model resume
-    with open(employer_model_resume_path, "rb") as model_file:
-        model_data = base64.standard_b64encode(model_file.read()).decode("utf-8")
-
-    prompt = (
-        "You are a professional resume reviewer. "
-        "Please compare the following candidate's resume with the employer's model resume. "
-        "Provide a brief summary of the employer's model resume and of the strengths of the employer's model resume. "
-        "Provide detailed feedback on the candidate's resume, highlighting strengths, weaknesses, "
-        "and areas for improvement. Be specific and constructive in your feedback.\n\n"
-        f"Employer's Model Resume (encoded in base64):\n{model_data}\n\n"
-        f"Candidate's Resume (encoded in base64):\n{doc_data}\n\n"
-        "Feedback:"
-    )
-
+def review_resume(candidate_resume_path: Path, employer_resume_path: Path):
+    """Review and compare the resumes, printing feedback in chunks."""
     try:
-        response = client.models.generate_content_stream(
-            model='gemini-1.5-flash',
-            contents=[
-                {'mime_type': 'application/pdf', 'data': model_data}, 
-                {'mime_type': 'application/pdf', 'data': doc_data}, 
-                prompt
-            ]
+        # Read the files
+        with open(candidate_resume_path, "rb") as doc_file:
+            candidate_bytes = doc_file.read()
+        with open(employer_resume_path, "rb") as model_file:
+            employer_bytes = model_file.read()
+
+        # Optional: create base64 strings (for prompt context)
+        candidate_data = base64.standard_b64encode(candidate_bytes).decode("utf-8")
+        employer_data = base64.standard_b64encode(employer_bytes).decode("utf-8")
+
+        # Build prompt including both resumes (base64 encoded for reference)
+        prompt_text = (
+            "You are a professional resume reviewer. "
+            "Please compare the following candidate's resume with the employer's model resume. "
+            "Provide a brief summary of the employer's model resume and its strengths. "
+            "Then provide detailed feedback on the candidate's resume, highlighting strengths, weaknesses, "
+            "and areas for improvement. Be specific and constructive.\n\n"
+            f"Employer's Model Resume (base64):\n{employer_data}\n\n"
+            f"Candidate's Resume (base64):\n{candidate_data}\n\n"
+            "Feedback:"
         )
-        # Accumulate text chunks from the stream
-        markdown_output = ""
-        for chunk in response:
-            if chunk.text:
-                markdown_output += chunk.text
+
+        # Create Part objects using helper methods
+        employer_part = types.Part.from_bytes(data=employer_bytes, mime_type="application/pdf")
+        candidate_part = types.Part.from_bytes(data=candidate_bytes, mime_type="application/pdf")
+        prompt_part = types.Part.from_text(text=prompt_text)
+
+        # Call the API using generate_content_stream; it returns an iterator over chunks
+        stream = client.models.generate_content_stream(
+            model='gemini-1.5-flash',
+            contents=[employer_part, candidate_part, prompt_part]
+        )
+
+        print("\nFeedback (printing in chunks):\n")
+        for chunk in stream:
+            text = chunk.text or ""
+            print(text, end="", flush=True)
+        print()  # add newline after completion
+
     except Exception as e:
-        markdown_output = f"An error occurred: {e}"
+        print(f"Error: {e}")
 
-    # Render the markdown output
-    render_markdown_in_tkinter(markdown_output)
-
+if __name__ == "__main__":
+    candidate_path, employer_path = select_resume()
+    review_resume(candidate_path, employer_path)
