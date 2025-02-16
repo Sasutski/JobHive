@@ -1,6 +1,5 @@
 import firebase_admin
 from firebase_admin import db, credentials
-import json
 
 # Initialize Firebase with your credentials
 cred = credentials.Certificate("assets/keys/serviceAccountKey.json")
