@@ -1,4 +1,4 @@
-pyrebase4
+firebase_admin
 requests
 setuptools
 Pillow
