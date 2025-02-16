@@ -1,62 +1,71 @@
-"""
-job_posting.py
-post jobs to a database that can be accessed by other users on a different computer: Use firebase
-include tags for search filtering
-"""
 import firebase_admin
-from firebase_admin import db
-from firebase_admin import credentials
+from firebase_admin import db, credentials
+import json
 
 # Initialize Firebase with your credentials
 cred = credentials.Certificate("assets/keys/serviceAccountKey.json")
-
-# Initialize the app with your database URL
 firebase_admin.initialize_app(cred, {
     'databaseURL': 'https://jobhive-d66d3-default-rtdb.asia-southeast1.firebasedatabase.app/'
 })
+
+# Reference directly to the "jobs" node
 ref = db.reference('jobs')
+
 def post_job(title, description, location, tags):
-    # Create a new job posting
+    # Create a new job posting with tags stored as a dict for easier querying
     job = {
         'title': title,
         'description': description,
         'location': location,
-        'tags': tags
+        'tags': {tag: True for tag in tags}
     }
-
-    # Push the job posting to the database
-    ref.child('jobs').push(job)
+    # Push the job posting directly to the "jobs" node
+    ref.push(job)
     
-# get all jobs in the database
-
 def get_all_jobs():
-    jobs = ref.child('jobs').get()
+    jobs = ref.get()
     return jobs
 
 def get_job_by_id(job_id):
     try:
-        job = ref.child('jobs').child(job_id).get()
+        job = ref.child(job_id).get()
         return job
     except Exception as e:
         return f"Error fetching job by ID: {e}"
     
-    
 def get_jobs_by_tag(tag):
     try:
-        jobs = ref.child('jobs').order_by_child('tags').equal_to(tag).get()
+        # Query by the child key "tags/<tag>"
+        jobs = ref.order_by_child(f"tags/{tag}").equal_to(True).get()
         return jobs
     except Exception as e:
-        return f"Error fetching job by ID: {e}"
+        return f"Error fetching jobs by tag: {e}"
     
-# add debug code
-
 def debug():
-    print("Debugging...")
-    print("All jobs:")
-    print(get_all_jobs())
-    print("Job by ID:")
-    print(get_job_by_id('1'))
-    print("Jobs by tag:")
-    print(get_jobs_by_tag('Python'))
+    print("Debugging...\n")
+
+    print("📌 All Job Listings:")
+    all_jobs = get_all_jobs()
+    for job_id, job in all_jobs.items():
+        print(f"\n🔹 {job['title']} ({job['location']})")
+        print(f"   📝 {job['description']}")
+        print(f"   🏷️ Tags: {', '.join(job['tags'].keys())}")
+
+    if all_jobs:
+        first_key = list(all_jobs.keys())[0]
+        first_job = get_job_by_id(first_key)
+        print("\n📍 First Job Details:")
+        print(f"🔹 {first_job['title']} ({first_job['location']})")
+        print(f"   📝 {first_job['description']}")
+        print(f"   🏷️ Tags: {', '.join(first_job['tags'].keys())}")
+
+    print("\n📌 Jobs Tagged with 'Python':")
+    jobs_by_tag = get_jobs_by_tag('Python')
+    for job_id, job in jobs_by_tag.items():
+        print(f"\n🔹 {job['title']} ({job['location']})")
+        print(f"   📝 {job['description']}")
+        print(f"   🏷️ Tags: {', '.join(job['tags'].keys())}")
+
+debug()
 
 debug()
