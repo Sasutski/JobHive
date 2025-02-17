@@ -69,5 +69,3 @@ def debug():
         print(f"   🏷️ Tags: {', '.join(job['tags'].keys())}")
 
 debug()
-
-debug()
