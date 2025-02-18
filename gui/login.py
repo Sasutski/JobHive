@@ -105,5 +105,48 @@ def logout():
 
 def is_logged_in():
     return user_token is not None
+    # Automatically load token on import (if the file exists)
 
-signUp()
+
+def display_menu():
+    print("\n=== JobHive Menu ===")
+    if not is_logged_in():
+        print("1. Sign Up")
+        print("2. Log In")
+        print("3. Exit")
+    else:
+        print("1. View Profile")
+        print("2. Log Out")
+        print("3. Exit")
+    return input("Choose an option: ")
+
+def main():
+    
+    while True:
+        choice = display_menu()
+        
+        if not is_logged_in():
+            if choice == "1":
+                signUp()
+            elif choice == "2":
+                logIn()
+            elif choice == "3":
+                print("Goodbye!")
+                break
+            else:
+                print("Invalid choice. Please try again.")
+        else:
+            if choice == "1":
+                # You can add profile viewing functionality here
+                print("Profile viewing not implemented yet")
+            elif choice == "2":
+                logout()
+            elif choice == "3":
+                print("Goodbye!")
+                break
+            else:
+                print("Invalid choice. Please try again.")
+load_token()
+if __name__ == "__main__":
+    main()
+
