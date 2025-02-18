@@ -1,6 +1,4 @@
-"""
-Enhanced job posting system with base64 file storage in Firebase
-"""
+#!/usr/bin/env python3
 from datetime import datetime
 import firebase_admin
 from firebase_admin import db, credentials
@@ -63,30 +61,40 @@ def post_job(title, description, location, tags, file_path=None):
     job_ref = ref.push(job)
     job_id = job_ref.key
     
-    # If a file was provided, encode and store it
-    if file_path and os.path.exists(file_path):
+    # If a file path was provided and the file exists, handle the file upload
+    if file_path and file_path.strip():  # Check if file_path is not empty
+        if not os.path.exists(file_path):
+            print("Warning: Specified file does not exist. Job posted without file.")
+            return job_id
+            
         # Check file size (limit: 5MB)
         if os.path.getsize(file_path) > 5 * 1024 * 1024:
-            return "Error: File size exceeds 5MB limit"
+            print("Warning: File size exceeds 5MB limit. Job posted without file.")
+            return job_id
         
-        file_data = encode_file(file_path)
-        if isinstance(file_data, dict):
-            # Save file metadata in the job posting
-            job['file_info'] = {
-                'filename': file_data['filename'],
-                'size': file_data['size'],
-                'type': file_data['type']
-            }
-            
-            # Save actual file content separately
-            files_ref.child(job_id).set({
-                'content': file_data['content'],
-                'uploader': user_token,
-                'upload_date': datetime.now().isoformat()
-            })
-            
-            # Update the job posting with file info
-            ref.child(job_id).update(job)
+        try:
+            file_data = encode_file(file_path)
+            if isinstance(file_data, dict):
+                # Save file metadata in the job posting
+                job['file_info'] = {
+                    'filename': file_data['filename'],
+                    'size': file_data['size'],
+                    'type': file_data['type']
+                }
+                
+                # Save actual file content separately
+                files_ref.child(job_id).set({
+                    'content': file_data['content'],
+                    'uploader': user_token,
+                    'upload_date': datetime.now().isoformat()
+                })
+                
+                # Update the job posting with file info
+                ref.child(job_id).update(job)
+            else:
+                print("Warning: Error encoding file. Job posted without file.")
+        except Exception as e:
+            print(f"Warning: Error handling file upload: {e}. Job posted without file.")
     
     return job_id
 
@@ -308,57 +316,120 @@ def delete_file(job_id):
     except Exception as e:
         return f"Error deleting file: {e}"
 
-# Debugging section
-def debug():
-    print("Debugging...\n")
-    
-    # For testing purposes, override authentication functions
-    global is_logged_in, user_token
-    is_logged_in = lambda: True  # Override to always return True during debugging
-    user_token = "test_user_token"
-    
-    # Post a test job. Ensure "test_resume.pdf" exists in your working directory,
-    # or pass None if you want to skip file upload testing.
-    posted_job_id = post_job(
-        "Python Developer", 
-        "Looking for experienced Python developer",
-        "Remote",
-        ["Python", "Django"],
-        "/Users/vince/Desktop/JobHive/assets/resumes/test_model_resume.pdf"  # Change this to None if the file doesn't exist.
-    )
-    
-    if isinstance(posted_job_id, str) and posted_job_id.startswith("Error"):
-        print(f"Error posting job: {posted_job_id}")
+###############################################################################
+# Terminal GUI Functions
+###############################################################################
+
+def list_all_jobs_gui():
+    jobs = get_all_jobs()
+    if isinstance(jobs, dict) and jobs:
+        print("\n--- All Jobs ---")
+        for jid, job in jobs.items():
+            print(f"ID: {jid}")
+            print(f"Title: {job.get('title', 'No Title')}")
+            print(f"Location: {job.get('location', 'No Location')}")
+            print(f"Posted: {job.get('posted_date', 'N/A')}")
+            print("-" * 20)
     else:
-        print(f"Job posted successfully with ID: {posted_job_id}")
-    
-    print("\n📌 All Jobs:")
-    all_jobs = get_all_jobs()
-    if isinstance(all_jobs, dict):
-        for job_id, job in all_jobs.items():
-            print(f"\n🔹 {job.get('title', 'No Title')}")
-            print(f"   📝 {job.get('description', 'No Description')}")
-            print(f"   📍 {job.get('location', 'No Location')}")
-            if 'tags' in job:
-                print(f"   🏷️ {', '.join(job['tags'].keys())}")
+        print("No jobs found or error occurred.")
+
+def open_job_gui():
+    job_id = input("Enter Job ID: ").strip()
+    job = get_job_by_id(job_id)
+    if isinstance(job, dict):
+        print("\n--- Job Details ---")
+        for key, value in job.items():
+            print(f"{key}: {value}")
     else:
-        print("Error fetching all jobs:", all_jobs)
+        print(job)
+
+def search_jobs_gui():
+    query = input("Enter search query: ").strip()
+    results = search_jobs(query)
+    if isinstance(results, dict) and results:
+        print("\n--- Search Results ---")
+        for jid, job in results.items():
+            print(f"ID: {jid} | Title: {job.get('title', 'No Title')}")
+    else:
+        print("No matching jobs found or error occurred.")
+
+def post_job_gui():
+    print("\n--- Post a New Job ---")
+    title = input("Enter Job Title: ").strip()
+    description = input("Enter Job Description: ").strip()
+    location = input("Enter Job Location: ").strip()
+    tags_str = input("Enter tags (comma separated): ").strip()
+    tags = [tag.strip() for tag in tags_str.split(',') if tag.strip()]
+    file_path = input("Enter file path (or leave blank): ").strip() or None
+    result = post_job(title, description, location, tags, file_path)
+    print(f"Job posted. ID: {result}" if isinstance(result, str) else result)
+
+def update_job_gui():
+    print("\n--- Update a Job ---")
+    job_id = input("Enter Job ID to update: ").strip()
+    updates = {}
+    new_title = input("Enter new title (leave blank to skip): ").strip()
+    if new_title:
+        updates['title'] = new_title
+    new_description = input("Enter new description (leave blank to skip): ").strip()
+    if new_description:
+        updates['description'] = new_description
+    new_location = input("Enter new location (leave blank to skip): ").strip()
+    if new_location:
+        updates['location'] = new_location
+    new_tags = input("Enter new tags (comma separated, leave blank to skip): ").strip()
+    if new_tags:
+        tags_list = [tag.strip() for tag in new_tags.split(',') if tag.strip()]
+        updates['tags'] = {tag: True for tag in tags_list}
+    result = update_job(job_id, updates)
+    print(result)
+
+def delete_job_gui():
+    job_id = input("Enter Job ID to delete: ").strip()
+    result = delete_job(job_id)
+    print(result)
+
+def my_posted_jobs_gui():
+    my_jobs = get_my_posted_jobs()
+    if isinstance(my_jobs, dict) and my_jobs:
+        print("\n--- My Posted Jobs ---")
+        for jid, job in my_jobs.items():
+            print(f"ID: {jid} | Title: {job.get('title', 'No Title')}")
+    else:
+        print("No jobs posted by you or error occurred.")
+
+def terminal_gui():
+    print("Launching JobHive Terminal GUI...")
+    
+    # Enforce real authentication
+    if not is_logged_in():
+        print("Error: You must be logged in to use the terminal interface.")
+        return
+
+    menu_options = {
+        '1': ("List All Jobs", list_all_jobs_gui),
+        '2': ("Open Job by ID", open_job_gui),
+        '3': ("Search Jobs", search_jobs_gui),
+        '4': ("Post a Job", post_job_gui),
+        '5': ("Update a Job", update_job_gui),
+        '6': ("Delete a Job", delete_job_gui),
+        '7': ("Get My Posted Jobs", my_posted_jobs_gui),
+        '8': ("Exit", None)
+    }
+    
+    while True:
+        print("\n=== JobHive Terminal GUI ===")
+        for key, (desc, _) in menu_options.items():
+            print(f"{key}. {desc}")
+        choice = input("Enter your choice: ").strip()
         
-    print("\n🔍 Search Results for 'Python':")
-    search_results = search_jobs("Python")
-    if isinstance(search_results, dict):
-        for job_id, job in search_results.items():
-            print(f"Found: {job.get('title', 'No Title')}")
-    else:
-        print("Error searching jobs:", search_results)
-        
-    print("\n🕒 Recent Jobs:")
-    recent = get_recent_jobs(5)
-    if isinstance(recent, list):
-        for job in recent:
-            print(f"Recent: {job.get('title', 'No Title')}")
-    else:
-        print("Error fetching recent jobs:", recent)
+        if choice == '8':
+            print("Exiting Terminal GUI.")
+            break
+        elif choice in menu_options:
+            menu_options[choice][1]()
+        else:
+            print("Invalid choice. Please try again.")
 
 if __name__ == "__main__":
-    debug()
+    terminal_gui()
