@@ -7,7 +7,7 @@ from rich.text import Text
 from rich.layout import Layout
 from typing import Optional
 import firebase_admin
-from firebase_admin import auth, credentials
+from firebase_admin import auth, credentials, firestore
 from firebase_admin._auth_utils import (
     UserNotFoundError,
     InvalidIdTokenError
@@ -24,11 +24,20 @@ YOUR_FIREBASE_WEB_API_KEY = "AIzaSyAcwreE9k06t8HtJ6vhSOblwCskAEkWRWQ"
 class AuthenticationCLI:
     def __init__(self):
         self.console = Console()
-        # Get the project root directory
         self.project_root = Path(__file__).parent
-        # Initialize Firebase Admin SDK
-        cred = credentials.Certificate(self.project_root / 'serviceAccountKey.json')
+        
+        # Get serviceAccountKey directly from gist
+        gist_url = "https://gist.githubusercontent.com/Sasutski/808de9abc7f676ed253cc0f63a0f56b5/raw/serviceAccountKey.json"
+        response = requests.get(gist_url)
+        if response.status_code == 200:
+            service_account_info = response.json()  # Parse JSON directly from response
+        else:
+            raise Exception("Failed to fetch serviceAccountKey from gist")
+    
+        # Initialize Firebase Admin SDK with the dictionary directly
+        cred = credentials.Certificate(service_account_info)
         firebase_admin.initialize_app(cred)
+        self.db = firestore.client()
         self.current_user = self.load_user_session()
 
     def load_user_session(self):
@@ -65,7 +74,7 @@ class AuthenticationCLI:
             padding=(1, 20)
         ))
         if self.current_user:
-            self.console.print(f"[green]Logged in as: {self.current_user.get('email')}[/green]")
+            self.console.print(f"[green]Logged in as: {self.current_user.get('email')} ({self.current_user.get('user_type', 'N/A')})[/green]")
 
     def display_menu(self):
         """Display the main menu"""
@@ -104,7 +113,6 @@ class AuthenticationCLI:
             password = Prompt.ask("Enter password", password=True)
             
             with self.console.status("[bold green]Logging in..."):
-                # Firebase Auth REST API endpoint
                 url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={YOUR_FIREBASE_WEB_API_KEY}"
                 
                 payload = {
@@ -120,6 +128,8 @@ class AuthenticationCLI:
                     # Get user details using the UID
                     user = auth.get_user(auth_data['localId'])
                     
+                    # Get Firestore data
+                    user_doc = self.db.collection('users').document(user.uid).get()
                     user_data = {
                         'uid': user.uid,
                         'email': user.email,
@@ -127,7 +137,8 @@ class AuthenticationCLI:
                         'email_verified': user.email_verified,
                         'disabled': user.disabled,
                         'id_token': auth_data['idToken'],
-                        'refresh_token': auth_data['refreshToken']
+                        'refresh_token': auth_data['refreshToken'],
+                        'user_type': user_doc.get('user_type')  # Include user type in session
                     }
                     self.save_user_session(user_data)
                     self.console.print("[green]Login successful![/green]")
@@ -152,17 +163,32 @@ class AuthenticationCLI:
             password = Prompt.ask("Enter password", password=True)
             display_name = Prompt.ask("Enter display name", default="")
             
+            # Add user type selection
+            user_type = Prompt.ask(
+                "Select user type",
+                choices=["applicant", "employer"],
+                default="applicant"
+            )
+            
             with self.console.status("[bold green]Creating user..."):
                 user = auth.create_user(
                     email=email,
                     password=password,
                     display_name=display_name
                 )
+                
+                # Store user data in Firestore
+                user_ref = self.db.collection('users').document(user.uid)
+                user_ref.set({
+                    'email': email,
+                    'display_name': display_name,
+                    'user_type': user_type,
+                    'created_at': firestore.SERVER_TIMESTAMP
+                })
             
             self.console.print(f"[green]User created successfully! UID: {user.uid}[/green]")
             
             if Confirm.ask("Would you like to login as this user?"):
-                # Login the user after creation
                 url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={YOUR_FIREBASE_WEB_API_KEY}"
                 payload = {
                     "email": email,
@@ -173,6 +199,8 @@ class AuthenticationCLI:
                 
                 if response.status_code == 200:
                     auth_data = response.json()
+                    # Get Firestore data
+                    user_doc = user_ref.get()
                     user_data = {
                         'uid': user.uid,
                         'email': user.email,
@@ -180,7 +208,8 @@ class AuthenticationCLI:
                         'email_verified': user.email_verified,
                         'disabled': user.disabled,
                         'id_token': auth_data['idToken'],
-                        'refresh_token': auth_data['refreshToken']
+                        'refresh_token': auth_data['refreshToken'],
+                        'user_type': user_doc.get('user_type')
                     }
                     self.save_user_session(user_data)
                     self.console.print("[green]Logged in successfully![/green]")
@@ -198,6 +227,7 @@ class AuthenticationCLI:
             
             with self.console.status("[bold green]Fetching user details..."):
                 user = auth.get_user(uid)
+                user_doc = self.db.collection('users').document(uid).get()
             
             user_table = Table(show_header=True, box=box.SIMPLE)
             user_table.add_column("Property", style="cyan")
@@ -208,7 +238,8 @@ class AuthenticationCLI:
                 ("Email", user.email),
                 ("Display Name", user.display_name),
                 ("Email Verified", str(user.email_verified)),
-                ("Disabled", str(user.disabled))
+                ("Disabled", str(user.disabled)),
+                ("User Type", user_doc.get('user_type', 'N/A'))
             ]
             
             for prop, value in user_details:
@@ -256,6 +287,7 @@ class AuthenticationCLI:
             
             email = Prompt.ask("Enter new email (press enter to skip)", default="")
             display_name = Prompt.ask("Enter new display name (press enter to skip)", default="")
+            user_type = Prompt.ask("Enter new user type (press enter to skip)", choices=["", "applicant", "employer"], default="")
             
             update_params = {}
             if email:
@@ -263,9 +295,25 @@ class AuthenticationCLI:
             if display_name:
                 update_params['display_name'] = display_name
                 
-            if update_params:
+            if update_params or user_type:
                 with self.console.status("[bold green]Updating user..."):
-                    updated_user = auth.update_user(uid, **update_params)
+                    if update_params:
+                        updated_user = auth.update_user(uid, **update_params)
+                    else:
+                        updated_user = auth.get_user(uid)
+                    
+                    # Update Firestore
+                    user_ref = self.db.collection('users').document(uid)
+                    update_data = {}
+                    if email:
+                        update_data['email'] = email
+                    if display_name:
+                        update_data['display_name'] = display_name
+                    if user_type:
+                        update_data['user_type'] = user_type
+                    
+                    if update_data:
+                        user_ref.update(update_data)
                     
                     # Update session data if the current user was updated
                     if self.current_user and self.current_user['uid'] == uid:
@@ -276,6 +324,8 @@ class AuthenticationCLI:
                             'email_verified': updated_user.email_verified,
                             'disabled': updated_user.disabled
                         })
+                        if user_type:
+                            user_data['user_type'] = user_type
                         self.save_user_session(user_data)
                         
                 self.console.print("[green]User updated successfully![/green]")
@@ -337,6 +387,9 @@ class AuthenticationCLI:
             
             if Confirm.ask("Are you sure you want to delete this user?", default=False):
                 with self.console.status("[bold green]Deleting user..."):
+                    # Delete from Firestore first
+                    self.db.collection('users').document(uid).delete()
+                    # Then delete from Authentication
                     auth.delete_user(uid)
                     
                     # Clear session if the current user was deleted
