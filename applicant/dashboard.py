@@ -1,3 +1,5 @@
+# JobHive/applicant/dashboard.py
+
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
@@ -6,27 +8,25 @@ import sys
 import time
 import os
 from pathlib import Path
-from .job_view import JobViewer, main as job_view_main
 
-class EmployerDashboard:
+class ApplicantDashboard:
     def __init__(self):
         self.console = Console()
         self.project_root = Path(__file__).resolve().parent.parent
-        self.job_viewer = JobViewer()
 
     def clear_screen(self):
         os.system('cls' if os.name == 'nt' else 'clear')
         self.console.clear()
 
     def create_header(self):
-        header_text = Text("Employer Dashboard", style="bold white on blue", justify="center")
+        header_text = Text("Applicant Dashboard", style="bold white on blue", justify="center")
         return Panel(header_text, box=box.DOUBLE, padding=(1, 1))
 
     def create_menu(self):
         menu_items = [
-            "[1] Post New Job",
-            "[2] Review Applicants",
-            "[3] View Job Market",
+            "[1] View Available Jobs",
+            "[2] Apply for Jobs",
+            "[3] View My Applications",
             "[4] Account Settings",
             "[5] Exit"
         ]
@@ -43,25 +43,28 @@ class EmployerDashboard:
         
         try:
             if choice == "1":
-                self.console.print("[bold green]Redirecting to Post Job page...")
-                from .post_job import main as post_job_main
-                post_job_main()
-                return "post_job"
-                
-            elif choice == "2":
-                self.console.print("[bold green]Redirecting to Review Applicants page...")
-                # Implementation for review applicants
-                pass
-                
-            elif choice == "3":
-                self.console.print("[bold green]Redirecting to Job Market View...")
+                self.console.print("[bold green]Redirecting to Job Listings...")
+                from .job_view import main as job_view_main
                 job_view_main()
                 return "job_view"
                 
+            elif choice == "2":
+                self.console.print("[bold green]Redirecting to Job Application page...")
+                from .apply_job import main as apply_job_main
+                apply_job_main()
+                return "apply_job"
+                
+            elif choice == "3":
+                self.console.print("[bold green]Redirecting to My Applications...")
+                from .my_applications import main as my_applications_main
+                my_applications_main()
+                return "my_applications"
+                
             elif choice == "4":
                 self.console.print("[bold green]Redirecting to Account Settings...")
-                # Implementation for account settings
-                pass
+                from .settings import main as settings_main
+                settings_main()
+                return "settings"
                 
         except Exception as e:
             self.console.print(f"[bold red]Error: {str(e)}")
@@ -79,6 +82,7 @@ class EmployerDashboard:
                 choice = self.console.input("\n[bold yellow]Enter your choice (1-5): ")
                 
                 if choice == "5":
+                    self.console.print("[bold blue]Thank you for using JobHive! Goodbye!")
                     break
                     
                 elif choice in ["1", "2", "3", "4"]:
@@ -97,7 +101,7 @@ class EmployerDashboard:
                 time.sleep(2)
 
 def main():
-    dashboard = EmployerDashboard()
+    dashboard = ApplicantDashboard()
     try:
         dashboard.run()
     except KeyboardInterrupt:
