@@ -1,123 +1,117 @@
 from rich.console import Console
-from rich.table import Table
 from rich.panel import Panel
-from rich.layout import Layout
-from rich.align import Align
 from rich.text import Text
-from datetime import datetime
+from rich.layout import Layout
+from rich import box
+import sys
 import time
+import os
 
-class EmployerDashboard:
-    def __init__(self):
-        self.console = Console()
-        self.layout = Layout()
+console = Console()
 
-    def create_header(self):
-        """Create the dashboard header"""
-        header = Panel(
-            Align.center("[bold yellow]JobHive Employer Dashboard[/bold yellow]"),
-            style="bold white on blue"
-        )
-        return header
+def clear_screen():
+    # Cross-platform clear screen
+    os.system('cls' if os.name == 'nt' else 'clear')
+    console.clear()
 
-    def create_stats_panel(self, stats):
-        """Create a panel showing key statistics"""
-        stats_table = Table(show_header=False, box=None)
-        stats_table.add_column("Metric", style="cyan")
-        stats_table.add_column("Value", style="yellow")
+def create_header():
+    header_text = Text("Employer Dashboard", style="bold white on blue", justify="center")
+    return Panel(header_text, box=box.DOUBLE, padding=(1, 1))
+
+def create_menu():
+    menu_items = [
+        "[1] Post New Job",
+        "[2] Review Applicants",
+        "[3] View Posted Jobs",
+        "[4] Account Settings",
+        "[5] Exit"
+    ]
+    menu_text = Text("\n".join(menu_items), justify="left")
+    return Panel(menu_text, title="Menu Options", box=box.ROUNDED, padding=(1, 1))
+
+def loading_animation():
+    with console.status("[bold blue]Loading...", spinner="dots"):
+        time.sleep(1.5)
+
+def redirect_to_page(choice):
+    loading_animation()
+    clear_screen()
+    
+    if choice == "1":
+        console.print("[bold green]Redirecting to Post Job page...")
+        try:
+            import post_job
+            post_job.main()
+            return "post_job"
+        except ImportError:
+            console.print("[bold red]Error: post_job.py not found!")
+
+    elif choice == "2":
+        console.print("[bold green]Redirecting to Review Applicants page...")
+        try:
+            import review_applicants
+            review_applicants.main()
+            return "review_applicants"
+        except ImportError:
+            console.print("[bold red]Error: review_applicants.py not found!")
+
+    elif choice == "3":
+        console.print("[bold green]Redirecting to View Jobs page...")
+        try:
+            import view_jobs
+            view_jobs.main()
+            return "view_jobs"
+        except ImportError:
+            console.print("[bold red]Error: view_jobs.py not found!")
+
+    elif choice == "4":
+        console.print("[bold green]Redirecting to Account Settings...")
+        try:
+            import sys
+            import os
+            sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            from authentication import AuthenticationCLI
+            auth_cli = AuthenticationCLI()
+            auth_cli.main_loop()
+            return "authentication"
+        except ImportError as e:
+            console.print(f"[bold red]Error: {str(e)}")
+        except Exception as e:
+            console.print(f"[bold red]Error: {str(e)}")
+
+def display_dashboard():
+    clear_screen()
+    
+    # Create and display header
+    console.print(create_header())
+    
+    # Create and display menu
+    console.print(create_menu())
+
+def main():
+    while True:
+        display_dashboard()
         
-        for key, value in stats.items():
-            stats_table.add_row(key, str(value))
+        # Get user input
+        choice = console.input("\n[bold yellow]Enter your choice (1-5): ")
+        
+        if choice == "5":
+            console.print("\n[bold blue]Thank you for using the Employer Dashboard!")
+            time.sleep(1)
+            sys.exit()
             
-        stats_panel = Panel(
-            stats_table,
-            title="[bold]Key Statistics[/bold]",
-            border_style="blue"
-        )
-        return stats_panel
-
-    def create_job_listings_table(self, jobs):
-        """Create a table showing active job listings"""
-        table = Table(title="Active Job Listings")
-        table.add_column("ID", style="cyan")
-        table.add_column("Position", style="magenta")
-        table.add_column("Applications", style="green")
-        table.add_column("Status", style="yellow")
-        table.add_column("Posted Date", style="blue")
-
-        for job in jobs:
-            table.add_row(
-                str(job['id']),
-                job['position'],
-                str(job['applications']),
-                job['status'],
-                job['posted_date']
-            )
-        
-        return table
-
-    def create_recent_activities(self, activities):
-        """Create a panel showing recent activities"""
-        activity_text = Text()
-        for activity in activities:
-            activity_text.append(f"• {activity['time']} - {activity['description']}\n")
-        
-        activities_panel = Panel(
-            activity_text,
-            title="[bold]Recent Activities[/bold]",
-            border_style="green"
-        )
-        return activities_panel
-
-    def display_dashboard(self):
-        """Display the complete dashboard"""
-        # Sample data - replace with actual data from your database
-        sample_stats = {
-            "Total Active Jobs": 12,
-            "Total Applications": 145,
-            "Pending Reviews": 23,
-            "Hired This Month": 5
-        }
-
-        sample_jobs = [
-            {"id": 1, "position": "Senior Developer", "applications": 25, 
-             "status": "Active", "posted_date": "2024-02-01"},
-            {"id": 2, "position": "Product Manager", "applications": 18, 
-             "status": "Active", "posted_date": "2024-02-03"},
-            {"id": 3, "position": "UX Designer", "applications": 15, 
-             "status": "Closing Soon", "posted_date": "2024-02-05"}
-        ]
-
-        sample_activities = [
-            {"time": "10:30 AM", "description": "New application received for Senior Developer"},
-            {"time": "09:15 AM", "description": "Interview scheduled with John Doe"},
-            {"time": "Yesterday", "description": "Posted new job listing for UX Designer"}
-        ]
-
-        # Clear the screen
-        self.console.clear()
-
-        # Create layout
-        self.layout.split_column(
-            Layout(self.create_header(), size=3),
-            Layout(self.create_stats_panel(sample_stats), size=8),
-            Layout(self.create_job_listings_table(sample_jobs), size=12),
-            Layout(self.create_recent_activities(sample_activities), size=10)
-        )
-
-        # Render the layout
-        self.console.print(self.layout)
-
-    def run(self):
-        """Run the dashboard with automatic refresh"""
-        while True:
-            try:
-                self.display_dashboard()
-                time.sleep(30)  # Refresh every 30 seconds
-            except KeyboardInterrupt:
-                print("\nExiting dashboard...")
-                break
+        elif choice in ["1", "2", "3", "4"]:
+            current_page = redirect_to_page(choice)
+            
+            if current_page:
+                clear_screen()
+        else:
+            console.print("[bold red]Invalid choice! Please try again.")
+            time.sleep(1)
 
 if __name__ == "__main__":
-    dashboard = EmployerDashboard()
-    dashboard.run()
+    try:
+        main()
+    except KeyboardInterrupt:
+        console.print("\n[bold red]Program terminated by user.")
+        sys.exit()
