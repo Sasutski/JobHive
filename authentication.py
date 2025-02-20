@@ -93,30 +93,69 @@ class AuthenticationCLI:
             display_name = Prompt.ask("Enter display name", default="")
             user_type = Prompt.ask("Select user type", choices=["applicant", "employer"], default="applicant")
             
-            with self.console.status("[bold green]Creating user..."):
-                user = auth.create_user(email=email, password=password, display_name=display_name)
-                
+            status = self.console.status("[bold green]Creating user...")
+            status.start()
+            
+            try:
+                # Create Firebase user
+                user = auth.create_user(
+                    email=email,
+                    password=password,
+                    display_name=display_name
+                )
+    
+                # Create Firestore document
                 self.db.collection('users').document(user.uid).set({
-                    'email': email, 'display_name': display_name,
-                    'user_type': user_type, 'created_at': firestore.SERVER_TIMESTAMP
+                    'email': email,
+                    'display_name': display_name,
+                    'user_type': user_type,
+                    'created_at': firestore.SERVER_TIMESTAMP
                 })
+    
+                status.stop()
+                self.console.print("[green]User created successfully![/green]")
                 
+                # Handle automatic login if requested
                 if Confirm.ask("Would you like to login as this user?"):
-                    response = requests.post(
-                        f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={self.API_KEY}",
-                        json={"email": email, "password": password, "returnSecureToken": True}
-                    ).json()
-                    
-                    self._save_session({
-                        'uid': user.uid, 'email': email,
-                        'display_name': display_name,
-                        'email_verified': False,
-                        'disabled': False,
-                        'id_token': response['idToken'],
-                        'refresh_token': response['refreshToken'],
-                        'user_type': user_type
-                    })
-                    self.console.print("[green]Logged in successfully![/green]")
+                    try:
+                        response = requests.post(
+                            f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={self.API_KEY}",
+                            json={
+                                "email": email,
+                                "password": password,
+                                "returnSecureToken": True
+                            },
+                            timeout=30
+                        )
+                        
+                        response.raise_for_status()
+                        response_data = response.json()
+                        
+                        if 'idToken' not in response_data or 'refreshToken' not in response_data:
+                            raise Exception("Invalid response from authentication server")
+                        
+                        self._save_session({
+                            'uid': user.uid,
+                            'email': email,
+                            'display_name': display_name,
+                            'email_verified': False,
+                            'disabled': False,
+                            'id_token': response_data['idToken'],
+                            'refresh_token': response_data['refreshToken'],
+                            'user_type': user_type
+                        })
+                        self.console.print("[green]Logged in successfully![/green]")
+                    except requests.exceptions.RequestException as e:
+                        self.console.print(f"[red]Network error during login: {str(e)}[/red]")
+                    except Exception as e:
+                        self.console.print(f"[red]Failed to login: {str(e)}[/red]")
+                        
+            except Exception as e:
+                status.stop()
+                if 'user' in locals():  # If Firestore failed but user was created
+                    auth.delete_user(user.uid)
+                self.console.print(f"[red]Error creating user: {str(e)}[/red]")
+                
         except Exception as e:
             self.console.print(f"[red]Error: {str(e)}[/red]")
 

@@ -5,7 +5,7 @@ from rich import box
 import time, json
 from pathlib import Path
 from employer.dashboard import EmployerDashboard
-# from JobHive.applicant.dashboard import ApplicantDashboard
+from applicant.dashboard import ApplicantDashboard
 import subprocess
 import sys
 
@@ -95,8 +95,8 @@ class JobHiveMain:
                 elif user['user_type'] == 'applicant':
                     self.console.print("[green]Loading Applicant Dashboard...[/green]")
                     time.sleep(1)
-                    self.console.print("[yellow]Applicant Dashboard is under construction[/yellow]")
-                    time.sleep(2)
+                    applicant_dashboard = ApplicantDashboard()
+                    applicant_dashboard.run()
                 else:
                     self.console.print("[red]Invalid user type! Please re-authenticate.[/red]")
                     time.sleep(1)

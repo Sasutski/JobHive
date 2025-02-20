@@ -1,18 +1,19 @@
-# JobHive/applicant/dashboard.py
-
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
 from rich import box
-import sys
-import time
-import os
+import sys, time, os
 from pathlib import Path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from authentication import AuthenticationCLI
+from .job_view import ApplicantJobViewer, main as job_view_main
 
 class ApplicantDashboard:
     def __init__(self):
         self.console = Console()
         self.project_root = Path(__file__).resolve().parent.parent
+        self.auth_cli = AuthenticationCLI()  # Initialize authentication system
+        self.job_viewer = ApplicantJobViewer()
 
     def clear_screen(self):
         os.system('cls' if os.name == 'nt' else 'clear')
@@ -44,7 +45,6 @@ class ApplicantDashboard:
         try:
             if choice == "1":
                 self.console.print("[bold green]Redirecting to Job Listings...")
-                from .job_view import main as job_view_main
                 job_view_main()
                 return "job_view"
                 
@@ -61,9 +61,10 @@ class ApplicantDashboard:
                 return "my_applications"
                 
             elif choice == "4":
-                self.console.print("[bold green]Redirecting to Account Settings...")
-                from .settings import main as settings_main
-                settings_main()
+                self.console.print("[bold green]Opening Account Settings...")
+                result = self.auth_cli.main_loop()  # This will handle all the authentication UI and logic
+                if not self.auth_cli.current_user:  # Check if user logged out
+                    return "logout"
                 return "settings"
                 
         except Exception as e:
@@ -82,12 +83,15 @@ class ApplicantDashboard:
                 choice = self.console.input("\n[bold yellow]Enter your choice (1-5): ")
                 
                 if choice == "5":
-                    self.console.print("[bold blue]Thank you for using JobHive! Goodbye!")
                     break
                     
                 elif choice in ["1", "2", "3", "4"]:
-                    current_page = self.redirect_to_page(choice)
-                    if current_page:
+                    result = self.redirect_to_page(choice)
+                    if result == "logout":
+                        self.console.print("[bold blue]Logged out. Returning to login screen...")
+                        time.sleep(2)
+                        break
+                    if result:
                         self.clear_screen()
                 else:
                     self.console.print("[bold red]Invalid choice! Please try again.")

@@ -7,6 +7,8 @@ import time
 import os
 from pathlib import Path
 from .job_view import JobViewer, main as job_view_main
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from authentication import AuthenticationCLI
 
 class EmployerDashboard:
     def __init__(self):
@@ -59,9 +61,11 @@ class EmployerDashboard:
                 return "job_view"
                 
             elif choice == "4":
-                self.console.print("[bold green]Redirecting to Account Settings...")
-                # Implementation for account settings
-                pass
+                self.console.print("[bold green]Opening Account Settings...")
+                result = self.auth_cli.main_loop()  # This will handle all the authentication UI and logic
+                if not self.auth_cli.current_user:  # Check if user logged out
+                    return "logout"
+                return "settings"
                 
         except Exception as e:
             self.console.print(f"[bold red]Error: {str(e)}")
