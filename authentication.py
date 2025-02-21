@@ -74,13 +74,14 @@ class AuthenticationCLI:
                 user_doc = self.db.collection('users').document(user.uid).get()
                 
                 self._save_session({
-                    'uid': user.uid, 'email': user.email,
+                    'uid': user.uid,
+                    'email': user.email,
                     'display_name': user.display_name,
                     'email_verified': user.email_verified,
                     'disabled': user.disabled,
                     'id_token': response['idToken'],
                     'refresh_token': response['refreshToken'],
-                    'user_type': user_doc.get('user_type')
+                    'user_type': user_doc.to_dict().get('user_type')
                 })
                 self.console.print("[green]Login successful![/green]")
         except Exception as e:
@@ -174,7 +175,7 @@ class AuthenticationCLI:
                 ("Display Name", user.display_name),
                 ("Email Verified", str(user.email_verified)),
                 ("Disabled", str(user.disabled)),
-                ("User Type", user_doc.get('user_type', 'N/A'))
+                ("User Type", user_doc.to_dict().get('user_type', 'N/A'))
             ]:
                 user_table.add_row(prop, str(value))
                 
