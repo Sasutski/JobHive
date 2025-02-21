@@ -49,6 +49,106 @@ class ApplicantJobViewer:
             return 1.0
         return SequenceMatcher(None, title1, title2).ratio()
 
+    def apply_for_job(self, job_id, job_title):
+        try:
+            # Verify user.json exists and can be read
+            user_json_path = self.project_root / 'user.json'
+            if not user_json_path.exists():
+                self.console.print("[red]Error: user.json file not found![/red]")
+                return False
+
+            # Read user data
+            with open(user_json_path) as f:
+                user_data = json.load(f)
+
+            # Check if already applied
+            applications_ref = self.db.collection('applications')
+            existing_application = applications_ref.where('user_id', '==', user_data['uid']).where('job_id', '==', job_id).get()
+            
+            if list(existing_application):
+                self.console.print("[red]You have already applied for this job![/red]")
+                return False
+
+            # Collect application details
+            self.console.print("\n[yellow]Please provide the following information:[/yellow]")
+            
+            # Required fields
+            email = self.input_yellow("Email: ")
+            while not email or '@' not in email:
+                self.console.print("[red]Please enter a valid email address[/red]")
+                email = self.input_yellow("Email: ")
+
+            phone = self.input_yellow("Phone Number: ")
+            while not phone:
+                self.console.print("[red]Phone number is required[/red]")
+                phone = self.input_yellow("Phone Number: ")
+
+            age = self.input_yellow("Age: ")
+            while not age.isdigit() or int(age) < 16:
+                self.console.print("[red]Please enter a valid age (16+)[/red]")
+                age = self.input_yellow("Age: ")
+
+            gender = self.input_yellow("Gender (M/F/Other): ").upper()
+            while gender not in ['M', 'F', 'OTHER']:
+                self.console.print("[red]Please enter M, F, or Other[/red]")
+                gender = self.input_yellow("Gender (M/F/Other): ").upper()
+
+            resume_path = self.input_yellow("Resume file path: ")
+            while not Path(resume_path).exists():
+                self.console.print("[red]File not found. Please enter a valid file path[/red]")
+                resume_path = self.input_yellow("Resume file path: ")
+
+            # Optional fields
+            linkedin = self.input_yellow("LinkedIn Profile (optional): ")
+            github = self.input_yellow("GitHub Profile (optional): ")
+            portfolio = self.input_yellow("Portfolio URL (optional): ")
+
+            # Prepare application data
+            application_data = {
+                'user_id': user_data['uid'],
+                'user_name': user_data['display_name'],
+                'job_id': job_id,
+                'job_title': job_title,
+                'email': email,
+                'phone': phone,
+                'age': int(age),
+                'gender': gender,
+                'resume_path': resume_path,
+                'linkedin': linkedin if linkedin else None,
+                'github': github if github else None,
+                'portfolio': portfolio if portfolio else None,
+                'application_date': datetime.now(),
+                'status': 'pending'
+            }
+
+            # Add application to Firebase
+            doc_ref = applications_ref.document()
+            doc_ref.set(application_data)
+
+            self.console.print("[green]Application submitted successfully![/green]")
+            return True
+
+        except Exception as e:
+            self.console.print(f"[red]Error submitting application: {str(e)}[/red]")
+            return False
+
+    def delete_saved_job(self, job_doc_id):
+        try:
+            # Get confirmation from user
+            confirm = self.input_yellow("\nAre you sure you want to delete this saved job? (y/n): ").lower()
+            if confirm != 'y':
+                self.console.print("[yellow]Deletion cancelled.[/yellow]")
+                return False
+
+            # Delete the job from Firebase
+            self.db.collection('saved_jobs').document(job_doc_id).delete()
+            self.console.print("[green]Job successfully deleted![/green]")
+            return True
+
+        except Exception as e:
+            self.console.print(f"[red]Error deleting job: {str(e)}[/red]")
+            return False
+
     def save_job(self, job_id, job_title):
         try:
             # Debug print
@@ -89,15 +189,15 @@ class ApplicantJobViewer:
                 'user_name': user_name,
                 'job_id': job_id,
                 'job_title': job_title,
-                'saved_date': datetime.now()  # Using datetime instead of SERVER_TIMESTAMP
+                'saved_date': datetime.now()
             }
     
             # Debug print
             self.console.print("[blue]Saving job to Firebase...[/blue]")
     
             # Add document to Firebase
-            doc_ref = saved_jobs_ref.document()  # Create a new document reference
-            doc_ref.set(saved_job_data)  # Set the document data
+            doc_ref = saved_jobs_ref.document()
+            doc_ref.set(saved_job_data)
     
             self.console.print("[green]Job saved successfully![/green]")
             return True
@@ -119,61 +219,88 @@ class ApplicantJobViewer:
                 user_data = json.loads(f.read())
             
             user_id = user_data['uid']
-    
+
             saved_jobs = self.db.collection('saved_jobs').where('user_id', '==', user_id).get()
             
             if not saved_jobs:
                 self.console.print(Panel("[yellow]You haven't saved any jobs yet.[/yellow]", 
                                        title="Saved Jobs", border_style="red"))
                 return
-    
-            table = Table(show_header=True, box=box.SIMPLE)
-            table.add_column("#", style="cyan", justify="right")
-            table.add_column("Job Title", style="cyan")
-            table.add_column("Saved Date", style="white")
-    
-            # Convert to list to allow indexing
-            saved_jobs_list = list(saved_jobs)
-    
-            for idx, job in enumerate(saved_jobs_list, 1):
-                job_data = job.to_dict()
-                table.add_row(
-                    str(idx),
-                    job_data['job_title'],
-                    job_data['saved_date'].strftime("%Y-%m-%d")
-                )
-    
-            self.console.print(Panel(table, title="Saved Jobs", border_style="blue"))
-            
-            # Add options for user interaction
-            self.print_yellow("\nOptions:")
-            self.print_yellow("- Enter job number to view details")
-            self.print_yellow("- Enter 'x' to return")
-            
+
             while True:
+                self.clear_screen()
+                table = Table(show_header=True, box=box.SIMPLE)
+                table.add_column("#", style="cyan", justify="right")
+                table.add_column("Job Title", style="cyan")
+                table.add_column("Saved Date", style="white")
+
+                saved_jobs_list = list(saved_jobs)
+
+                for idx, job in enumerate(saved_jobs_list, 1):
+                    job_data = job.to_dict()
+                    table.add_row(
+                        str(idx),
+                        job_data['job_title'],
+                        job_data['saved_date'].strftime("%Y-%m-%d")
+                    )
+
+                self.console.print(Panel(table, title="Saved Jobs", border_style="blue"))
+                
+                self.print_yellow("\nOptions:")
+                self.print_yellow("1. View job details (enter job number)")
+                self.print_yellow("2. Apply for job (enter 'a' followed by job number, e.g., 'a1')")
+                self.print_yellow("3. Delete job (enter 'd' followed by job number, e.g., 'd1')")
+                self.print_yellow("4. Return (enter 'x')")
+                
                 choice = self.input_yellow("\nChoice: ").lower()
                 
                 if choice == 'x':
                     break
+                elif choice.startswith('d'):
+                    try:
+                        idx = int(choice[1:]) - 1
+                        if 0 <= idx < len(saved_jobs_list):
+                            if self.delete_saved_job(saved_jobs_list[idx].id):
+                                saved_jobs = self.db.collection('saved_jobs').where('user_id', '==', user_id).get()
+                                saved_jobs_list = list(saved_jobs)
+                                if not saved_jobs_list:
+                                    self.console.print(Panel("[yellow]You have no saved jobs.[/yellow]", 
+                                                           title="Saved Jobs", border_style="red"))
+                                    self.input_yellow("\nPress Enter to continue...")
+                                    break
+                        else:
+                            self.console.print("[red]Invalid job number. Please try again.[/red]")
+                            self.input_yellow("\nPress Enter to continue...")
+                    except ValueError:
+                        self.console.print("[red]Invalid input format. Please try again.[/red]")
+                        self.input_yellow("\nPress Enter to continue...")
+                elif choice.startswith('a'):
+                    try:
+                        idx = int(choice[1:]) - 1
+                        if 0 <= idx < len(saved_jobs_list):
+                            job_data = saved_jobs_list[idx].to_dict()
+                            self.apply_for_job(job_data['job_id'], job_data['job_title'])
+                            self.input_yellow("\nPress Enter to continue...")
+                        else:
+                            self.console.print("[red]Invalid job number. Please try again.[/red]")
+                            self.input_yellow("\nPress Enter to continue...")
+                    except ValueError:
+                        self.console.print("[red]Invalid input format. Please try again.[/red]")
+                        self.input_yellow("\nPress Enter to continue...")
                 elif choice.isdigit():
                     idx = int(choice) - 1
                     if 0 <= idx < len(saved_jobs_list):
                         job_data = saved_jobs_list[idx].to_dict()
                         self.clear_screen()
                         self.view_job_details(job_data['job_id'])
-                        
                         self.input_yellow("\nPress Enter to return to saved jobs...")
-                        self.clear_screen()
-                        # Show the table again
-                        self.console.print(Panel(table, title="Saved Jobs", border_style="blue"))
-                        self.print_yellow("\nOptions:")
-                        self.print_yellow("- Enter job number to view details")
-                        self.print_yellow("- Enter 'x' to return")
                     else:
                         self.console.print("[red]Invalid job number. Please try again.[/red]")
+                        self.input_yellow("\nPress Enter to continue...")
                 else:
                     self.console.print("[red]Invalid input. Please try again.[/red]")
-    
+                    self.input_yellow("\nPress Enter to continue...")
+
         except Exception as e:
             self.console.print(f"[red]Error viewing saved jobs: {str(e)}[/red]")
 
@@ -301,7 +428,16 @@ class ApplicantJobViewer:
                 width=100
             ))
 
-            if self.input_yellow("\nWould you like to save this job? (y/n): ").lower() == 'y':
+            self.print_yellow("\nOptions:")
+            self.print_yellow("1: Apply for this job")
+            self.print_yellow("2: Save this job")
+            self.print_yellow("3: Return")
+            
+            choice = self.input_yellow("\nSelect an option [1-3]: ").strip()
+            
+            if choice == "1":
+                self.apply_for_job(job_id, job_data['title'])
+            elif choice == "2":
                 self.save_job(job_id, job_data['title'])
             
         except Exception as e:

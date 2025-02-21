@@ -52,8 +52,9 @@ class EmployerDashboard:
                 
             elif choice == "2":
                 self.console.print("[bold green]Redirecting to Review Applicants page...")
-                # Implementation for review applicants
-                pass
+                from .review_applicants import main as review_applicants_main
+                review_applicants_main()
+                return "review_applicants"
                 
             elif choice == "3":
                 self.console.print("[bold green]Redirecting to Job Market View...")

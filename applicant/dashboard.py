@@ -56,8 +56,8 @@ class ApplicantDashboard:
                 
             elif choice == "3":
                 self.console.print("[bold green]Redirecting to My Applications...")
-                from .my_applications import main as my_applications_main
-                my_applications_main()
+                from .view_application import main as view_applications_main
+                view_applications_main()
                 return "my_applications"
                 
             elif choice == "4":
