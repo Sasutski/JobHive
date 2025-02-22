@@ -9,3 +9,4 @@ markdown
 tkhtmlview
 pyrebase
 firebase-admin
+google-cloud-storage

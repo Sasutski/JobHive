@@ -6,9 +6,10 @@ import firebase_admin
 from firebase_admin import firestore, credentials
 import json, os, sys, requests
 from pathlib import Path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from utils.storage_manager import StorageManager
 
-
-class ApplicationViewer:
+class ApplicationViewer: 
     def __init__(self):
         self.console = Console()
         self.project_root = Path(__file__).resolve().parent.parent
@@ -84,12 +85,22 @@ class ApplicationViewer:
                 
                 self.print_yellow("\nOptions:")
                 self.print_yellow("1. View application details (enter application number)")
-                self.print_yellow("2. Return (enter 'x')")
+                self.print_yellow("2. Cancel application (enter 'c' followed by application number)")
+                self.print_yellow("3. Return (enter 'x')")
                 
                 choice = self.input_yellow("\nChoice: ").lower()
 
                 if choice == 'x':
                     break
+                elif choice.startswith('c'):
+                    idx = int(choice[1:]) - 1
+                    if 0 <= idx < len(applications_list):
+                        self.delete_application(applications_list[idx])
+                        applications_list.pop(idx)
+                        self.input_yellow("\nPress Enter to return to applications list...")
+                    else:
+                        self.console.print("[red]Invalid application number. Please try again.[/red]")
+                        self.input_yellow("\nPress Enter to continue...")
                 elif choice.isdigit():
                     idx = int(choice) - 1
                     if 0 <= idx < len(applications_list):
@@ -145,6 +156,28 @@ class ApplicationViewer:
 
         except Exception as e:
             self.console.print(f"[red]Error viewing application details: {str(e)}[/red]")
+
+    def delete_application(self, application_doc):
+        try:
+            # Get application data first
+            app_data = application_doc.to_dict()
+            resume_path = app_data.get('resume_path')
+            
+            # Delete the resume file from storage if path exists
+            if resume_path:
+                storage_manager = StorageManager()
+                if storage_manager.delete_file(resume_path):
+                    self.console.print("[green]Resume file deleted successfully.[/green]")
+                else:
+                    self.console.print("[yellow]Warning: Could not delete resume file.[/yellow]")
+    
+            # Delete the application document
+            application_id = application_doc.id
+            self.db.collection('applications').document(application_id).delete()
+            self.console.print(f"[green]Application {application_id} has been successfully deleted.[/green]")
+            
+        except Exception as e:
+            self.console.print(f"[red]Error deleting application: {str(e)}[/red]")
 
 def main():
     viewer = ApplicationViewer()
