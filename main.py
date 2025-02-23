@@ -7,8 +7,8 @@ from pathlib import Path
 from employer.dashboard import EmployerDashboard
 from applicant.dashboard import ApplicantDashboard
 import subprocess
-import sys
-
+import sys, warnings
+warnings.filterwarnings('ignore', message='.*grpc_wait_for_shutdown_with_timeout.*')
 class JobHiveMain:
     def __init__(self):
         self.console = Console()

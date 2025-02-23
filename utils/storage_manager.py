@@ -3,6 +3,7 @@ import requests
 import json
 from datetime import datetime
 from pathlib import Path
+import datetime as dt
 
 CREDENTIALS_URL = "https://gist.githubusercontent.com/Sasutski/9b1617a09f94311ef3ab20c392f88534/raw"
 BUCKET_NAME = "jobhive-resumes"
@@ -12,8 +13,6 @@ class StorageManager:
         try:
             # Get credentials from Gist
             response = requests.get(CREDENTIALS_URL)
-            # Debug: print the fetched credentials content
-            print("Fetched credentials content:", response.text)
             
             # Optionally, strip BOM if necessary
             json_content = response.text.lstrip('\ufeff')
@@ -29,15 +28,20 @@ class StorageManager:
                     BUCKET_NAME,
                     location="us-central1"
                 )
-                print(f"Bucket {BUCKET_NAME} created successfully")
         
         except Exception as e:
             print(f"Error initializing storage: {str(e)}")
             raise
 
-    def upload_file(self, file_path, destination_folder="resumes"):
+    def upload_file(self, file_path, destination_folder="resumes", is_private=False):
         """
         Upload a file to Google Cloud Storage.
+        Args:
+            file_path: Path to the file to upload
+            destination_folder: Folder in bucket to store file
+            is_private: Whether the file should be private
+        Returns:
+            dict: Contains file information including URL and storage path
         """
         try:
             # Create a unique filename
@@ -48,21 +52,58 @@ class StorageManager:
             # Create blob and upload file
             blob = self.bucket.blob(destination_blob_name)
             blob.upload_from_filename(file_path)
-            
-            # Since uniform bucket-level access is enabled, do not use blob.make_public()
-            # Instead, ensure that the bucket's IAM policy grants the desired public access.
-            # For example, you might grant the "allUsers" member the "Storage Object Viewer" role.
-            
-            return {
-                'url': blob.public_url,
-                'path': destination_blob_name,
-                'name': original_filename
-            }
+
+            # For private files, we'll only return the path
+            # For public files, we'll include a signed URL
+            if is_private:
+                return {
+                    'path': destination_blob_name,
+                    'name': original_filename,
+                    'is_private': True
+                }
+            else:
+                # Generate a signed URL with longer expiration for public files
+                signed_url = blob.generate_signed_url(
+                    version="v4",
+                    expiration=dt.timedelta(days=7),  # 7 day expiration for public files
+                    method="GET"
+                )
+                
+                return {
+                    'url': signed_url,
+                    'path': destination_blob_name,
+                    'name': original_filename,
+                    'is_private': False
+                }
             
         except Exception as e:
             print(f"Error uploading file: {str(e)}")
             return None
-    
+
+    def get_private_file_url(self, blob_path, expiration_minutes=5):
+        """
+        Get a signed URL for temporary access to a private file
+        Args:
+            blob_path: Path to the blob in storage
+            expiration_minutes: Number of minutes until URL expires
+        Returns:
+            str: Signed URL for temporary access
+        """
+        try:
+            blob = self.bucket.blob(blob_path)
+            if not blob.exists():
+                return None
+            
+            # Generate signed URL
+            url = blob.generate_signed_url(
+                version="v4",
+                expiration=dt.timedelta(minutes=expiration_minutes),
+                method="GET"
+            )
+            return url
+        except Exception as e:
+            print(f"Error generating signed URL: {str(e)}")
+            return None
 
     def delete_file(self, blob_path):
         """
@@ -76,7 +117,7 @@ class StorageManager:
             print(f"Error deleting file: {str(e)}")
             return False
 
-    def list_files(self, prefix="resumes/"):
+    def list_files(self, prefix="resumes/", include_private=False):
         """
         List all files in a folder
         """
@@ -85,15 +126,34 @@ class StorageManager:
             blobs = self.bucket.list_blobs(prefix=prefix)
             
             for blob in blobs:
-                files.append({
+                file_info = {
                     'name': blob.name.split('/')[-1],
                     'path': blob.name,
-                    'url': blob.public_url,
                     'size': blob.size,
                     'updated': blob.updated
-                })
+                }
+                
+                # Generate signed URL for all files
+                if include_private or not prefix.startswith('model_resumes/'):
+                    file_info['signed_url'] = blob.generate_signed_url(
+                        version="v4",
+                        expiration=dt.timedelta(minutes=30),
+                        method="GET"
+                    )
+                
+                files.append(file_info)
             
             return files
         except Exception as e:
             print(f"Error listing files: {str(e)}")
             return []
+    
+    def download_file(self, storage_path, local_path):
+        """Download a file from Firebase Storage to a local path."""
+        try:
+            blob = self.bucket.blob(storage_path)
+            blob.download_to_filename(local_path)
+            return True
+        except Exception as e:
+            print(f"Error downloading file: {str(e)}")
+            return False

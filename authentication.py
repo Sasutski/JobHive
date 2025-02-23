@@ -15,11 +15,13 @@ class AuthenticationCLI:
         self.project_root = Path(__file__).parent
         self.API_KEY = "AIzaSyAcwreE9k06t8HtJ6vhSOblwCskAEkWRWQ"
         
-        # Initialize Firebase
-        cred = credentials.Certificate(requests.get(
-            "https://gist.githubusercontent.com/Sasutski/808de9abc7f676ed253cc0f63a0f56b5/raw/serviceAccountKey.json"
-        ).json())
-        firebase_admin.initialize_app(cred)
+        # Initialize Firebase only if not already initialized
+        if not firebase_admin._apps:  # Check if no Firebase apps exist
+            cred = credentials.Certificate(requests.get(
+                "https://gist.githubusercontent.com/Sasutski/808de9abc7f676ed253cc0f63a0f56b5/raw/serviceAccountKey.json"
+            ).json())
+            firebase_admin.initialize_app(cred)
+        
         self.db = firestore.client()
         self.current_user = self._load_session()
 
@@ -264,28 +266,29 @@ class AuthenticationCLI:
         except Exception as e:
             self.console.print(f"[red]Error: {str(e)}[/red]")
 
-    def main_loop(self):
-        while True:
-            self._display_ui()
-            choices = ["0", "1", "2"] if not self.current_user else ["0", "1", "2", "3", "4", "5", "6", "7"]
-            choice = Prompt.ask("Select an option", choices=choices)
+def main():
+    auth_cli = AuthenticationCLI()
+    while True:
+        auth_cli._display_ui()
+        choices = ["0", "1", "2"] if not auth_cli.current_user else ["0", "1", "2", "3", "4", "5", "6", "7"]
+        choice = Prompt.ask("Select an option", choices=choices)
+        
+        if choice == "0":
+            auth_cli.console.print("[yellow]Goodbye![/yellow]")
+            break
             
-            if choice == "0":
-                self.console.print("[yellow]Goodbye![/yellow]")
-                break
-                
-            actions = {
-                "1": self.login_flow if not self.current_user else self.get_user_flow,
-                "2": self.create_user_flow if not self.current_user else self.update_user_flow,
-                "3": lambda: self.disable_enable_user_flow(True),
-                "4": lambda: self.disable_enable_user_flow(False),
-                "5": self.delete_user_flow,
-                "6": self.verify_token_flow,
-                "7": self.logout_flow
-            }
-            
-            actions[choice]()
-            time.sleep(2)
+        actions = {
+            "1": auth_cli.login_flow if not auth_cli.current_user else auth_cli.get_user_flow,
+            "2": auth_cli.create_user_flow if not auth_cli.current_user else auth_cli.update_user_flow,
+            "3": lambda: auth_cli.disable_enable_user_flow(True),
+            "4": lambda: auth_cli.disable_enable_user_flow(False),
+            "5": auth_cli.delete_user_flow,
+            "6": auth_cli.verify_token_flow,
+            "7": auth_cli.logout_flow
+        }
+        
+        actions[choice]()
+        time.sleep(2)
 
 if __name__ == "__main__":
-    AuthenticationCLI().main_loop()
+    main()

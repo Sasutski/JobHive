@@ -10,3 +10,6 @@ tkhtmlview
 pyrebase
 firebase-admin
 google-cloud-storage
+urllib3==1.26.20
+pycryptodome
+python-docx

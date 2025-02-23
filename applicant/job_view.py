@@ -11,7 +11,10 @@ import requests, time, warnings, json
 from pathlib import Path
 from difflib import SequenceMatcher
 from datetime import datetime
+import platform
+import subprocess
 from utils.storage_manager import StorageManager
+from ai.resume_reviewer import ResumeReviewer, main as resume_reviewer_main
 
 warnings.filterwarnings("ignore", category=UserWarning, module="google.cloud.firestore_v1.base_collection")
 
@@ -109,6 +112,7 @@ class ApplicantJobViewer:
             # Resume upload
             while True:
                 resume_path = self.input_yellow("Resume file path (PDF or Word document): ")
+                resume_path = Path(resume_path)  # Convert string to Path object if it's not already
                 if not Path(resume_path).exists():
                     self.console.print("[red]File not found. Please enter a valid file path[/red]")
                     continue
@@ -224,6 +228,7 @@ class ApplicantJobViewer:
                     title="Saved Jobs",
                     border_style="red"
                 ))
+                time.sleep(2.0)
                 return
 
             while True:
@@ -396,7 +401,57 @@ class ApplicantJobViewer:
             return not (job_max < filter_min or job_min > filter_max)
         except Exception:
             return False
-
+    def open_file_dialog(self):
+        """Opens a native file dialog and returns the selected file path."""
+        system = platform.system()
+        
+        try:
+            if system == 'Darwin':  # macOS
+                script = '''
+                tell application "System Events"
+                    activate
+                    try
+                        set theFile to choose file with prompt "Select a resume file:" default location (path to desktop) of type {"PDF", "DOC", "DOCX"}
+                        POSIX path of theFile
+                    on error errorMessage
+                        return ""
+                    end try
+                end tell
+                '''
+                process = subprocess.Popen(['osascript', '-e', script],
+                                        stdout=subprocess.PIPE,
+                                        stderr=subprocess.PIPE)
+                stdout, stderr = process.communicate()
+                result = stdout.decode('utf-8').strip()
+                if result:
+                    return result
+                return None
+                
+            elif system == 'Windows':
+                script = '''
+                Add-Type -AssemblyName System.Windows.Forms
+                $f = New-Object System.Windows.Forms.OpenFileDialog
+                $f.Filter = "Document files (*.pdf;*.doc;*.docx)|*.pdf;*.doc;*.docx"
+                if ($f.ShowDialog() -eq 'OK') { $f.FileName } else { '' }
+                '''
+                process = subprocess.Popen(['powershell', '-Command', script],
+                                        stdout=subprocess.PIPE,
+                                        stderr=subprocess.PIPE)
+                stdout, stderr = process.communicate()
+                result = stdout.decode('utf-8').strip()
+                if result:
+                    return result
+                return None
+                
+            else:  # Linux or other systems
+                self.print_yellow("\nNative file dialog not supported on this system.")
+                self.print_yellow("Please enter the file path manually (or press Enter to cancel):")
+                path = input().strip()
+                return path if path else None
+                
+        except Exception as e:
+            self.console.print(f"[red]Error in file dialog: {str(e)}[/red]")
+            return None
     def view_job_details(self, job_id):
         try:
             job_doc = self.db.collection('jobs').document(job_id).get()
@@ -428,15 +483,79 @@ class ApplicantJobViewer:
             ))
 
             self.print_yellow("\nOptions:")
-            self.print_yellow("1: Apply for this job")
-            self.print_yellow("2: Save this job")
-            self.print_yellow("3: Return")
+            self.print_yellow("1: Review your resume for this job")
+            self.print_yellow("2: Apply for this job")
+            self.print_yellow("3: Save this job")
+            self.print_yellow("4: Return")
 
-            choice = self.input_yellow("\nSelect an option [1-3]: ").strip()
+            choice = self.input_yellow("\nSelect an option [1-4]: ").strip()
 
             if choice == "1":
-                self.apply_for_job(job_id, job_data['title'])
+                # Initialize resume reviewer
+                try:
+                    # Load user data
+                    user_json_path = self.project_root / 'user.json'
+                    if not user_json_path.exists():
+                        self.console.print("[red]Error: user.json file not found![/red]")
+                        return
+
+                    with open(user_json_path) as f:
+                        user_data = json.load(f)
+
+                    reviewer = resume_reviewer_main()
+                    if not reviewer:
+                        self.console.print("[red]Error: Unable to initialize resume reviewer. Please try again later.[/red]")
+                        return
+
+                    # Check if job posting has a model resume
+                    model_resume_url = job_data.get('model_resume_url')
+
+                    # Allow user to upload resume for review without applying
+                    self.console.print(Panel(
+                        "[cyan]To review your resume against this job's requirements, please select your resume file.[/cyan]",
+                        title="Resume Review",
+                        border_style="blue",
+                        width=60
+                    ))
+
+                    resume_path = self.open_file_dialog()
+                    if not resume_path:
+                        self.console.print("[yellow]Resume selection cancelled.[/yellow]")
+                        return
+
+                    if not resume_path.lower().endswith(('.pdf', '.doc', '.docx')):
+                        self.console.print("[red]Unsupported file type. Please use PDF or Word document.[/red]")
+                        return
+
+                    # Skip upload and directly process the resume for review
+                    self.console.print("[yellow]Analyzing your resume against job requirements...\nThis may take a moment.[/yellow]")
+                    
+                    # Proceed with resume review without uploading
+                    reviewer.review_resume(resume_path, model_resume_url)
+
+                except (ImportError, ModuleNotFoundError) as e:
+                    self.console.print(Panel(
+                        "[red]Resume reviewer module not found![/red]\n\n" +
+                        "[yellow]This is a system error. Please contact support.[/yellow]",
+                        title="System Error",
+                        border_style="red",
+                        width=60
+                    ))
+                    self.input_yellow("\nPress Enter to continue...")
+                except Exception as e:
+                    self.console.print(Panel(
+                        f"[red]Unexpected error: {str(e)}[/red]\n\n" +
+                        "[yellow]Please try again later or contact support if the issue persists.[/yellow]",
+                        title="Error",
+                        border_style="red",
+                        width=60
+                    ))
+                    self.input_yellow("\nPress Enter to continue...")
+
+
             elif choice == "2":
+                self.apply_for_job(job_id, job_data['title'])
+            elif choice == "3":
                 self.save_job(job_id, job_data['title'])
 
         except Exception as e:

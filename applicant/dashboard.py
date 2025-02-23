@@ -5,7 +5,7 @@ from rich import box
 import sys, time, os
 from pathlib import Path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from authentication import AuthenticationCLI
+from authentication import AuthenticationCLI, main as auth_main_loop
 from .job_view import ApplicantJobViewer, main as job_view_main
 
 class ApplicantDashboard:
@@ -25,11 +25,10 @@ class ApplicantDashboard:
 
     def create_menu(self):
         menu_items = [
-            "[1] View Available Jobs",
-            "[2] Apply for Jobs",
-            "[3] View My Applications",
-            "[4] Account Settings",
-            "[5] Exit"
+            "[1] View and Apply for Available Jobs",
+            "[2] View My Applications",
+            "[3] Account Settings",
+            "[x] Exit"
         ]
         menu_text = Text("\n".join(menu_items), justify="left")
         return Panel(menu_text, title="Menu Options", box=box.ROUNDED, padding=(1, 1))
@@ -49,20 +48,14 @@ class ApplicantDashboard:
                 return "job_view"
                 
             elif choice == "2":
-                self.console.print("[bold green]Redirecting to Job Application page...")
-                from .apply_job import main as apply_job_main
-                apply_job_main()
-                return "apply_job"
-                
-            elif choice == "3":
                 self.console.print("[bold green]Redirecting to My Applications...")
                 from .view_application import main as view_applications_main
                 view_applications_main()
                 return "my_applications"
                 
-            elif choice == "4":
+            elif choice == "3":
                 self.console.print("[bold green]Opening Account Settings...")
-                result = self.auth_cli.main_loop()  # This will handle all the authentication UI and logic
+                auth_main_loop()  # This will handle all the authentication UI and logic
                 if not self.auth_cli.current_user:  # Check if user logged out
                     return "logout"
                 return "settings"
@@ -80,9 +73,9 @@ class ApplicantDashboard:
         while True:
             try:
                 self.display_dashboard()
-                choice = self.console.input("\n[bold yellow]Enter your choice (1-5): ")
+                choice = self.console.input("\n[bold yellow]Enter your choice (1-4, x to exit): ")
                 
-                if choice == "5":
+                if choice == "x".lower():
                     break
                     
                 elif choice in ["1", "2", "3", "4"]:

@@ -1,28 +1,36 @@
 # JobHive/employer/post_job.py
 from rich.console import Console
 from rich.panel import Panel
+from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich import box
 import firebase_admin
 from firebase_admin import firestore, credentials
-import requests
-import time
-import sys
-import os
+import requests, time, sys, os, json
+from datetime import datetime
 from pathlib import Path
+import subprocess
+import platform
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from utils.storage_manager import StorageManager
 
 class JobPoster:
     def __init__(self):
         self.console = Console()
         self.project_root = Path(__file__).resolve().parent.parent
+        self.storage_manager = StorageManager()
         
         try:
-            self.db = firestore.client()
-        except ValueError:
-            cred = credentials.Certificate(requests.get(
-                "https://gist.githubusercontent.com/Sasutski/808de9abc7f676ed253cc0f63a0f56b5/raw/serviceAccountKey.json"
-            ).json())
-            firebase_admin.initialize_app(cred)
-            self.db = firestore.client()
+            if not firebase_admin._apps:
+                cred = credentials.Certificate(requests.get(
+                    "https://gist.githubusercontent.com/Sasutski/808de9abc7f676ed253cc0f63a0f56b5/raw/serviceAccountKey.json"
+                ).json())
+                self.app = firebase_admin.initialize_app(cred)
+            else:
+                self.app = firebase_admin.get_app()
+            self.db = firestore.client(app=self.app)
+        except Exception as e:
+            self.console.print(f"[red]Error initializing Firebase: {str(e)}[/red]")
+            sys.exit(1)
 
     def clear_screen(self):
         os.system('cls' if os.name == 'nt' else 'clear')
@@ -33,141 +41,254 @@ class JobPoster:
     def input_yellow(self, prompt):
         return self.console.input(f"[bold yellow]{prompt}[/bold yellow]")
 
+    def validate_input(self, prompt, validator=None, error_msg=None):
+        """Generic input validator with custom validation logic."""
+        while True:
+            value = self.input_yellow(prompt)
+            if not validator or validator(value):
+                return value
+            self.console.print(f"[red]{error_msg or 'Invalid input. Please try again.'}[/red]")
+
+    def open_file_dialog(self):
+        """Opens a native file dialog and returns the selected file path."""
+        system = platform.system()
+        
+        try:
+            if system == 'Darwin':  # macOS
+                script = '''
+                tell application "System Events"
+                    activate
+                    try
+                        set theFile to choose file with prompt "Select a resume file:" default location (path to desktop) of type {"PDF", "DOC", "DOCX"}
+                        POSIX path of theFile
+                    on error errorMessage
+                        return ""
+                    end try
+                end tell
+                '''
+                process = subprocess.Popen(['osascript', '-e', script],
+                                        stdout=subprocess.PIPE,
+                                        stderr=subprocess.PIPE)
+                stdout, stderr = process.communicate()
+                result = stdout.decode('utf-8').strip()
+                if result:
+                    return result
+                return None
+                
+            elif system == 'Windows':
+                script = '''
+                Add-Type -AssemblyName System.Windows.Forms
+                $f = New-Object System.Windows.Forms.OpenFileDialog
+                $f.Filter = "Document files (*.pdf;*.doc;*.docx)|*.pdf;*.doc;*.docx"
+                if ($f.ShowDialog() -eq 'OK') { $f.FileName } else { '' }
+                '''
+                process = subprocess.Popen(['powershell', '-Command', script],
+                                        stdout=subprocess.PIPE,
+                                        stderr=subprocess.PIPE)
+                stdout, stderr = process.communicate()
+                result = stdout.decode('utf-8').strip()
+                if result:
+                    return result
+                return None
+                
+            else:  # Linux or other systems
+                self.print_yellow("\nNative file dialog not supported on this system.")
+                self.print_yellow("Please enter the file path manually (or press Enter to cancel):")
+                path = input().strip()
+                return path if path else None
+                
+        except (KeyboardInterrupt, EOFError):
+            return None
+        except Exception as e:
+            self.console.print(f"[red]Error in file dialog: {str(e)}[/red]")
+            return None
+
+    def submit_job(self, job_data):
+        try:
+            with open(self.project_root / 'user.json') as f:
+                user_data = json.load(f)
+            employer_id = user_data.get('uid')
+
+            job_data['employer_id'] = employer_id
+            job_data['timestamp'] = firestore.SERVER_TIMESTAMP
+
+            job_ref = self.db.collection('jobs').document()
+            job_ref.set(job_data)
+            return True
+        except Exception as e:
+            self.console.print(f"[red]Error submitting job: {str(e)}[/red]")
+            return False
+
+    def collect_multiline_input(self, prompt, min_items=1):
+        """Collect multiline input with validation."""
+        items = []
+        self.print_yellow(f"\n{prompt} (press Enter twice when done):")
+        while True:
+            item = input().strip()
+            if not item:
+                if len(items) >= min_items:
+                    break
+                self.console.print(f"[yellow]Please enter at least {min_items} item(s).[/yellow]")
+                continue
+            items.append(item)
+        return '\n'.join(items)
+
     def post_job(self):
         try:
             self.clear_screen()
-            self.console.print(Panel.fit(
-                "[bold yellow]Post New Job[/bold yellow]",
-                box=box.DOUBLE
-            ))
-            
-            self.print_yellow("\nPlease enter the following job details:\n")
-            
-            title = self.input_yellow("Job Title: ").strip()
-            while not title:
-                self.console.print("[red]Job title cannot be empty.[/red]")
-                title = self.input_yellow("Job Title: ").strip()
+            self.console.print(Panel("[bold cyan]Post a New Job[/bold cyan]", box=box.DOUBLE))
+            job_data = {}
 
-            self.print_yellow("\nJob Type Options:")
-            self.print_yellow("1. Full-time")
-            self.print_yellow("2. Part-time")
-            self.print_yellow("3. Contract")
-            self.print_yellow("4. Internship")
-            
-            job_type_map = {
-                "1": "full-time",
-                "2": "part-time",
-                "3": "contract",
-                "4": "internship"
-            }
-            
-            while True:
-                choice = self.input_yellow("\nSelect job type [1-4]: ")
-                if choice in job_type_map:
-                    job_type = job_type_map[choice]
-                    break
-                self.console.print("[red]Invalid choice. Please try again.[/red]")
+            # Basic job details with validation
+            job_data['title'] = self.validate_input(
+                "Enter job title: ",
+                lambda x: len(x.strip()) >= 3,
+                "Job title must be at least 3 characters long."
+            )
 
-            location = self.input_yellow("\nLocation: ").strip()
-            while not location:
-                self.console.print("[red]Location cannot be empty.[/red]")
-                location = self.input_yellow("Location: ").strip()
+            # Job type selection with improved UI
+            job_types = ["full-time", "part-time", "contract", "internship"]
+            self.console.print(Panel("\n".join(
+                f"[cyan]{idx}.[/cyan] {jtype.title()}"
+                for idx, jtype in enumerate(job_types, 1)
+            ), title="Job Types", border_style="cyan"))
 
             while True:
                 try:
-                    min_salary = int(self.input_yellow("\nMinimum Salary (in thousands USD): "))
-                    if min_salary < 0:
+                    type_choice = int(self.input_yellow("Select job type (1-4): "))
+                    if 1 <= type_choice <= 4:
+                        job_data['job_type'] = job_types[type_choice - 1]
+                        break
+                    self.console.print("[red]Please select a number between 1 and 4.[/red]")
+                except ValueError:
+                    self.console.print("[red]Please enter a valid number.[/red]")
+
+            job_data['location'] = self.validate_input(
+                "\nEnter job location: ",
+                lambda x: len(x.strip()) >= 2,
+                "Location must be at least 2 characters long."
+            )
+
+            # Salary range with improved validation
+            while True:
+                try:
+                    min_salary = int(self.input_yellow("\nEnter minimum salary (in thousands USD): "))
+                    max_salary = int(self.input_yellow("Enter maximum salary (in thousands USD): "))
+                    
+                    if min_salary < 0 or max_salary < 0:
                         self.console.print("[red]Salary cannot be negative.[/red]")
                         continue
-                    
-                    max_salary = int(self.input_yellow("Maximum Salary (in thousands USD): "))
-                    if max_salary < min_salary:
-                        self.console.print("[red]Maximum salary must be greater than minimum salary.[/red]")
+                    if min_salary > max_salary:
+                        self.console.print("[red]Minimum salary cannot be greater than maximum salary.[/red]")
                         continue
-                    
-                    salary_range = f"${min_salary}k - ${max_salary}k"
+                        
+                    job_data['min_salary'] = min_salary
+                    job_data['max_salary'] = max_salary
+                    job_data['salary_range'] = f"${min_salary}k - ${max_salary}k"
                     break
                 except ValueError:
-                    self.console.print("[red]Please enter valid numbers.[/red]")
+                    self.console.print("[red]Please enter valid numbers for salary.[/red]")
 
-            self.print_yellow("\nEnter job responsibilities (press Enter twice to finish):")
-            responsibilities = []
-            while True:
-                line = self.input_yellow("")
-                if not line and responsibilities:
-                    break
-                if line:
-                    responsibilities.append(line)
-
-            self.print_yellow("\nEnter qualifications (press Enter twice to finish):")
-            qualifications = []
-            while True:
-                line = self.input_yellow("")
-                if not line and qualifications:
-                    break
-                if line:
-                    qualifications.append(line)
-
-            self.print_yellow("\nEnter benefits (press Enter twice to finish):")
-            benefits = []
-            while True:
-                line = self.input_yellow("")
-                if not line and benefits:
-                    break
-                if line:
-                    benefits.append(line)
-
-            job_data = {
-                'title': title,
-                'job_type': job_type,
-                'location': location,
-                'min_salary': min_salary,
-                'max_salary': max_salary,
-                'salary_range': salary_range,
-                'responsibilities': "\n".join(responsibilities),
-                'qualifications': "\n".join(qualifications),
-                'benefits': "\n".join(benefits),
-                'timestamp': firestore.SERVER_TIMESTAMP
-            }
-
-            self.db.collection('jobs').add(job_data)
+            # Detailed job information with minimum requirements
+            self.print_yellow("\nCollecting detailed information...")
             
+            job_data['responsibilities'] = self.collect_multiline_input(
+                "Enter job responsibilities", min_items=2)
+            
+            job_data['qualifications'] = self.collect_multiline_input(
+                "Enter job qualifications", min_items=2)
+            
+            job_data['benefits'] = self.collect_multiline_input(
+                "Enter job benefits", min_items=1)
+
+            # Model resume upload
+            file_path = None  # Initialize file_path variable
+            if self.input_yellow("\nWould you like to upload a model resume? (y/n): ").lower() == 'y':
+                self.print_yellow("\nOpening file selector...")
+                sys.stdin = open(os.devnull, 'r')
+                try:
+                    file_path = self.open_file_dialog()
+                    
+                    if file_path and os.path.exists(file_path):
+                        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                        filename = os.path.basename(file_path)
+                        model_resume_path = f"model_resumes/{timestamp}_{filename}"
+                        job_data['model_resume_path'] = model_resume_path
+                        self.console.print(f"[green]Selected file: {filename}[/green]")
+                    else:
+                        self.print_yellow("\nNo file selected or file not found.")
+                        
+                except Exception as e:
+                    self.print_yellow(f"\nError selecting file: {str(e)}")
+                finally:
+                    sys.stdin = sys.__stdin__
+
+            # Review and submit
             self.clear_screen()
-            self.console.print("[green]Job posted successfully![/green]")
-            time.sleep(2)
-            return True
+            self.console.print(Panel(
+                "\n".join(f"[cyan]{k}:[/cyan] {v}" for k, v in job_data.items()),
+                title="Job Details",
+                border_style="yellow"
+            ))
+
+            if self.input_yellow("\nSubmit job posting? (y/n): ").lower() == 'y':
+                with Progress(
+                    SpinnerColumn(),
+                    TextColumn("[progress.description]{task.description}"),
+                    console=self.console
+                ) as progress:
+                    task = progress.add_task("[cyan]Submitting job posting...", total=None)
+                    try:
+                        file_uploaded = False
+                        self.console.print("[cyan]Debug: Starting job submission process[/cyan]")
+                        
+                        if 'model_resume_path' in job_data:
+                            self.console.print(f"[cyan]Debug: Attempting to upload file: {file_path}[/cyan]")
+                            progress.update(task, description="[cyan]Uploading resume...")
+                            file_uploaded = self.storage_manager.upload_file(file_path, "model_resumes")
+                            
+                            if not file_uploaded:
+                                self.console.print("[red]Debug: File upload failed[/red]")
+                                self.print_yellow("\nFile upload failed. Job posting cancelled.")
+                                return
+                                
+                            self.console.print(f"[green]Debug: File upload successful: {file_uploaded}[/green]")
+                            job_data['model_resume_path'] = file_uploaded['path']
+                            job_data['model_resume_url'] = file_uploaded.get('url')
+
+                        progress.update(task, description="[cyan]Saving job details...")
+                        self.console.print("[cyan]Debug: Attempting to submit job to database[/cyan]")
+                        
+                        if self.submit_job(job_data):
+                            self.console.print("\n[green]✓ Job posted successfully![/green]")
+                        else:
+                            self.console.print("[red]Debug: Job submission to database failed[/red]")
+                            if file_uploaded:
+                                self.console.print("[yellow]Debug: Cleaning up uploaded file[/yellow]")
+                                self.storage_manager.delete_file(job_data['model_resume_path'])
+                            self.print_yellow("\nFailed to post job. Any uploaded files were removed.")
+                        
+                    except Exception as e:
+                        self.console.print(f"[red]Debug: Exception occurred: {str(e)}[/red]")
+                        if file_uploaded:
+                            self.console.print("[yellow]Debug: Cleaning up uploaded file after exception[/yellow]")
+                            self.storage_manager.delete_file(job_data['model_resume_path'])
+                        self.print_yellow(f"\nError occurred: {str(e)}. Any uploaded files were removed.")
+            else:
+                self.print_yellow("\nJob posting cancelled.")
 
         except Exception as e:
             self.console.print(f"[red]Error posting job: {str(e)}[/red]")
-            time.sleep(2)
-            return False
+        finally:
+            self.input_yellow("\nPress Enter to continue...")
 
 def main():
     poster = JobPoster()
-    try:
-        while True:
-            poster.clear_screen()
-            poster.console.print(Panel.fit(
-                "[bold yellow]Job Posting Menu[/bold yellow]",
-                box=box.DOUBLE
-            ))
-            
-            poster.print_yellow("\n1: Post New Job")
-            poster.print_yellow("2: Return to Dashboard")
-            
-            choice = poster.input_yellow("\nSelect an option [1/2]: ").strip()
-            
-            if choice == "1":
-                poster.post_job()
-            elif choice == "2":
-                break
-            else:
-                poster.console.print("[red]Invalid choice. Please try again.[/red]")
-                time.sleep(1)
-
-    except KeyboardInterrupt:
-        poster.console.print("\n[bold red]Program terminated by user.")
-        sys.exit()
+    poster.post_job()
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        Console().print("\n[bold red]Program terminated by user.")
+        sys.exit()

@@ -1,3 +1,4 @@
+# JobHive/employer/dashboard.py
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
@@ -6,15 +7,18 @@ import sys
 import time
 import os
 from pathlib import Path
+from .post_job import JobPoster, main as post_job_main
+from .employer_jobs import EmployerJobs, main as employer_jobs_main
 from .job_view import JobViewer, main as job_view_main
+from .review_applicants import main as review_applicants_main
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from authentication import AuthenticationCLI
+from authentication import AuthenticationCLI, main as auth_main_loop
 
 class EmployerDashboard:
     def __init__(self):
         self.console = Console()
         self.project_root = Path(__file__).resolve().parent.parent
-        self.job_viewer = JobViewer()
+        self.employer_id = "test_employer_id"  # This should be set when user logs in
 
     def clear_screen(self):
         os.system('cls' if os.name == 'nt' else 'clear')
@@ -27,10 +31,11 @@ class EmployerDashboard:
     def create_menu(self):
         menu_items = [
             "[1] Post New Job",
-            "[2] Review Applicants",
-            "[3] View Job Market",
-            "[4] Account Settings",
-            "[5] Exit"
+            "[2] View Posted Jobs",  # Updated menu item
+            "[3] Review Applicants",
+            "[4] View Job Market",
+            "[5] Account Settings",
+            "[6] Exit"
         ]
         menu_text = Text("\n".join(menu_items), justify="left")
         return Panel(menu_text, title="Menu Options", box=box.ROUNDED, padding=(1, 1))
@@ -46,26 +51,28 @@ class EmployerDashboard:
         try:
             if choice == "1":
                 self.console.print("[bold green]Redirecting to Post Job page...")
-                from .post_job import main as post_job_main
                 post_job_main()
                 return "post_job"
                 
             elif choice == "2":
+                self.console.print("[bold green]Viewing Posted Jobs...")
+                employer_jobs_main()
+                return "view_jobs"
+                
+            elif choice == "3":
                 self.console.print("[bold green]Redirecting to Review Applicants page...")
-                from .review_applicants import main as review_applicants_main
+                
                 review_applicants_main()
                 return "review_applicants"
                 
-            elif choice == "3":
+            elif choice == "4":
                 self.console.print("[bold green]Redirecting to Job Market View...")
                 job_view_main()
-                return "job_view"
+                return "job_market"
                 
-            elif choice == "4":
+            elif choice == "5":
                 self.console.print("[bold green]Opening Account Settings...")
-                result = self.auth_cli.main_loop()  # This will handle all the authentication UI and logic
-                if not self.auth_cli.current_user:  # Check if user logged out
-                    return "logout"
+                auth_main_loop()
                 return "settings"
                 
         except Exception as e:
@@ -81,12 +88,12 @@ class EmployerDashboard:
         while True:
             try:
                 self.display_dashboard()
-                choice = self.console.input("\n[bold yellow]Enter your choice (1-5): ")
+                choice = self.console.input("\n[bold yellow]Enter your choice (1-6): ")
                 
-                if choice == "5":
+                if choice == "6":
                     break
                     
-                elif choice in ["1", "2", "3", "4"]:
+                elif choice in ["1", "2", "3", "4", "5"]:
                     current_page = self.redirect_to_page(choice)
                     if current_page:
                         self.clear_screen()
