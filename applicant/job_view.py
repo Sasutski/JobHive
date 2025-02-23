@@ -17,7 +17,7 @@ from utils.storage_manager import StorageManager
 from ai.resume_reviewer import ResumeReviewer, main as resume_reviewer_main
 
 warnings.filterwarnings("ignore", category=UserWarning, module="google.cloud.firestore_v1.base_collection")
-
+warnings.filterwarnings("ignore", category=UserWarning, message="Detected filter using positional arguments.*")
 
 class ApplicantJobViewer:
     def __init__(self):
@@ -560,7 +560,60 @@ class ApplicantJobViewer:
 
         except Exception as e:
             self.console.print(f"[red]Error viewing job details: {str(e)}[/red]")
-
+    def save_feedback_dialog(self, feedback_text):
+        """Opens a dialog for saving feedback to a file."""
+        system = platform.system()
+        
+        try:
+            if system == 'Darwin':  # macOS
+                script = '''
+                tell application "System Events"
+                    activate
+                    try
+                        set theFile to choose file name with prompt "Save feedback as:" default name "resume_feedback.txt"
+                        POSIX path of theFile
+                    on error errorMessage
+                        return ""
+                    end try
+                end tell
+                '''
+                process = subprocess.Popen(['osascript', '-e', script],
+                                        stdout=subprocess.PIPE,
+                                        stderr=subprocess.PIPE)
+                stdout, stderr = process.communicate()
+                save_path = stdout.decode('utf-8').strip()
+                
+            elif system == 'Windows':
+                script = '''
+                Add-Type -AssemblyName System.Windows.Forms
+                $s = New-Object System.Windows.Forms.SaveFileDialog
+                $s.Filter = "Text files (*.txt)|*.txt|All files (*.*)|*.*"
+                $s.DefaultExt = "txt"
+                $s.FileName = "resume_feedback.txt"
+                if ($s.ShowDialog() -eq 'OK') { $s.FileName } else { '' }
+                '''
+                process = subprocess.Popen(['powershell', '-Command', script],
+                                        stdout=subprocess.PIPE,
+                                        stderr=subprocess.PIPE)
+                stdout, stderr = process.communicate()
+                save_path = stdout.decode('utf-8').strip()
+                
+            else:  # Linux or other systems
+                self.print_yellow("\nNative file dialog not supported on this system.")
+                self.print_yellow("Please enter the file path to save feedback (or press Enter to cancel):")
+                save_path = input().strip()
+            
+            if save_path:
+                with open(save_path, 'w', encoding='utf-8') as f:
+                    f.write(feedback_text)
+                self.console.print(f"\n[green]Feedback saved successfully to: {save_path}[/green]")
+                return True
+                
+            return False
+            
+        except Exception as e:
+            self.console.print(f"[red]Error saving feedback: {str(e)}[/red]")
+            return False
 
 def handle_salary_filter(console):
     while True:

@@ -20,7 +20,7 @@ client = genai.Client(api_key=API_KEY)
 class ResumeReviewer:
     def __init__(self):
         pass  # No need to handle uploading, assuming it's already done
-
+        self.console = Console()  # Initialize console as instance variable
     def open_file_dialog(self):
         """Simulate file selection in a dialog."""
         # This would integrate with your actual file dialog logic
@@ -126,39 +126,64 @@ class ResumeReviewer:
                     pass
 
     def save_feedback_as_word(self, feedback_text: str, resume_path: str):
-        """Save the feedback as a formatted Word document."""
-        try:
-            # Create a new Word document
-            doc = Document()
-
-            # Add title
-            doc.add_heading('Resume Review Feedback', 0)
-
-            # Add timestamp
-            doc.add_paragraph(f'Generated on: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}')
-
-            # Add a line for the reviewed resume
-            doc.add_paragraph(f'Resume reviewed: {Path(resume_path).name}')
-
-            # Add horizontal line
-            doc.add_paragraph('_' * 50)
-
-            # Add feedback content
-            doc.add_heading('Detailed Feedback', 1)
-            doc.add_paragraph(feedback_text)
-
-            # Get the directory of the original resume
-            output_dir = Path(resume_path).parent
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            output_filename = f'resume_feedback_{timestamp}.docx'
-            output_path = output_dir / output_filename
-
-            # Save the document
-            doc.save(str(output_path))
-            console.print(f"\n[green]Feedback saved as: {output_path}[/green]")
-
-        except Exception as e:
-            console.print(f"[red]Error saving feedback document: {str(e)}[/red]")
+            """Save the feedback as a formatted Word document with user-selected location."""
+            try:
+                # Create a new Word document
+                doc = Document()
+        
+                # Add title
+                doc.add_heading('Resume Review Feedback', 0)
+        
+                # Add timestamp
+                doc.add_paragraph(f'Generated on: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}')
+        
+                # Add a line for the reviewed resume
+                doc.add_paragraph(f'Resume reviewed: {Path(resume_path).name}')
+        
+                # Add horizontal line
+                doc.add_paragraph('_' * 50)
+        
+                # Add feedback content
+                doc.add_heading('Detailed Feedback', 1)
+                doc.add_paragraph(feedback_text)
+        
+                # Get original filename
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                original_filename = f'resume_feedback_{timestamp}.docx'
+                    
+                # Let user choose save location
+                self.console.print("\n[yellow]Where would you like to save the feedback document?[/yellow]")
+                self.console.print("[yellow]1. Downloads folder[/yellow]")
+                self.console.print("[yellow]2. Desktop[/yellow]")
+                
+                choice = input("\nEnter your choice (1-2): ")
+                
+                if choice == "1":
+                    # Save to Downloads folder
+                    save_path = str(Path.home() / "Downloads" / original_filename)
+                elif choice == "2":
+                    # Save to Desktop
+                    save_path = str(Path.home() / "Desktop" / original_filename)
+                else:
+                    self.console.print("[red]Invalid choice. Saving to desktop.[/red]")
+                    save_path = str(Path.home() / "Desktop" / original_filename)
+        
+                # Create directory if it doesn't exist
+                Path(save_path).parent.mkdir(parents=True, exist_ok=True)
+        
+                # Save the document
+                doc.save(save_path)
+                self.console.print(f"\n[green]Feedback saved successfully to: {save_path}[/green]")
+        
+            except Exception as e:
+                self.console.print(f"[red]Error saving feedback document: {str(e)}[/red]")
+                # Final fallback - save to desktop
+                desktop_path = Path.home() / 'Desktop' / f'resume_feedback_{datetime.now().strftime("%Y%m%d_%H%M%S")}.docx'
+                try:
+                    doc.save(str(desktop_path))
+                    self.console.print(f"\n[yellow]Feedback saved to desktop: {desktop_path}[/yellow]")
+                except Exception as e2:
+                    self.console.print(f"[red]Could not save feedback document: {str(e2)}[/red]")
 
     def download_resume(self, resume_url: str):
         """Download the resume from the provided URL."""
@@ -168,7 +193,7 @@ class ResumeReviewer:
             import os
 
             if not resume_url:
-                console.print("[red]Error: No resume URL provided[/red]")
+                console.print("The Employer hasn't submitted a resume. This function will not work for this job.")
                 return None
 
             # Create a temporary file to store the downloaded resume
@@ -192,10 +217,9 @@ class ResumeReviewer:
             console.print(f"[red]Error: {str(e)}[/red]")
             return None
 
-
 def main():
     reviewer = ResumeReviewer()
     return reviewer
-# Example usage:
+
 if __name__ == "__main__":
     main()

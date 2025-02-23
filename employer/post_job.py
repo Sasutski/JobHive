@@ -240,38 +240,29 @@ class JobPoster:
                     task = progress.add_task("[cyan]Submitting job posting...", total=None)
                     try:
                         file_uploaded = False
-                        self.console.print("[cyan]Debug: Starting job submission process[/cyan]")
                         
                         if 'model_resume_path' in job_data:
-                            self.console.print(f"[cyan]Debug: Attempting to upload file: {file_path}[/cyan]")
                             progress.update(task, description="[cyan]Uploading resume...")
                             file_uploaded = self.storage_manager.upload_file(file_path, "model_resumes")
                             
                             if not file_uploaded:
-                                self.console.print("[red]Debug: File upload failed[/red]")
                                 self.print_yellow("\nFile upload failed. Job posting cancelled.")
                                 return
                                 
-                            self.console.print(f"[green]Debug: File upload successful: {file_uploaded}[/green]")
                             job_data['model_resume_path'] = file_uploaded['path']
                             job_data['model_resume_url'] = file_uploaded.get('url')
-
+            
                         progress.update(task, description="[cyan]Saving job details...")
-                        self.console.print("[cyan]Debug: Attempting to submit job to database[/cyan]")
                         
                         if self.submit_job(job_data):
                             self.console.print("\n[green]✓ Job posted successfully![/green]")
                         else:
-                            self.console.print("[red]Debug: Job submission to database failed[/red]")
                             if file_uploaded:
-                                self.console.print("[yellow]Debug: Cleaning up uploaded file[/yellow]")
                                 self.storage_manager.delete_file(job_data['model_resume_path'])
                             self.print_yellow("\nFailed to post job. Any uploaded files were removed.")
                         
                     except Exception as e:
-                        self.console.print(f"[red]Debug: Exception occurred: {str(e)}[/red]")
                         if file_uploaded:
-                            self.console.print("[yellow]Debug: Cleaning up uploaded file after exception[/yellow]")
                             self.storage_manager.delete_file(job_data['model_resume_path'])
                         self.print_yellow(f"\nError occurred: {str(e)}. Any uploaded files were removed.")
             else:

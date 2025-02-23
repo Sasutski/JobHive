@@ -13,6 +13,7 @@ class ApplicationViewer:
     def __init__(self):
         self.console = Console()
         self.project_root = Path(__file__).resolve().parent.parent
+        self.storage_manager = StorageManager()
         
         try:
             if not firebase_admin._apps:
@@ -81,7 +82,7 @@ class ApplicationViewer:
                         f"[{status_color}]{app_data['status'].capitalize()}[/{status_color}]"
                     )
 
-                self.console.print(Panel(table, title="Job Applications", border_style="blue"))
+                self.console.print(Panel(table, title="Your Job Applications", border_style="blue"))
                 
                 self.print_yellow("\nOptions:")
                 self.print_yellow("1. View application details (enter application number)")
@@ -93,13 +94,21 @@ class ApplicationViewer:
                 if choice == 'x':
                     break
                 elif choice.startswith('c'):
-                    idx = int(choice[1:]) - 1
-                    if 0 <= idx < len(applications_list):
-                        self.delete_application(applications_list[idx])
-                        applications_list.pop(idx)
-                        self.input_yellow("\nPress Enter to return to applications list...")
-                    else:
-                        self.console.print("[red]Invalid application number. Please try again.[/red]")
+                    try:
+                        idx = int(choice[1:]) - 1
+                        if 0 <= idx < len(applications_list):
+                            app = applications_list[idx]
+                            if app.to_dict()['status'].lower() == 'pending':
+                                self.delete_application(app)
+                                applications_list.pop(idx)
+                            else:
+                                self.console.print("[red]Can only cancel pending applications.[/red]")
+                            self.input_yellow("\nPress Enter to continue...")
+                        else:
+                            self.console.print("[red]Invalid application number.[/red]")
+                            self.input_yellow("\nPress Enter to continue...")
+                    except ValueError:
+                        self.console.print("[red]Invalid input format.[/red]")
                         self.input_yellow("\nPress Enter to continue...")
                 elif choice.isdigit():
                     idx = int(choice) - 1
@@ -107,10 +116,10 @@ class ApplicationViewer:
                         self.view_application_details(applications_list[idx])
                         self.input_yellow("\nPress Enter to return to applications list...")
                     else:
-                        self.console.print("[red]Invalid application number. Please try again.[/red]")
+                        self.console.print("[red]Invalid application number.[/red]")
                         self.input_yellow("\nPress Enter to continue...")
                 else:
-                    self.console.print("[red]Invalid input. Please try again.[/red]")
+                    self.console.print("[red]Invalid input.[/red]")
                     self.input_yellow("\nPress Enter to continue...")
 
         except Exception as e:
@@ -134,8 +143,7 @@ class ApplicationViewer:
                 f"[bold cyan]Email:[/bold cyan] {app_data['email']}",
                 f"[bold cyan]Phone:[/bold cyan] {app_data['phone']}",
                 f"[bold cyan]Age:[/bold cyan] {app_data['age']}",
-                f"[bold cyan]Gender:[/bold cyan] {app_data['gender']}",
-                f"[bold cyan]Resume Path:[/bold cyan] {app_data['resume_path']}"
+                f"[bold cyan]Gender:[/bold cyan] {app_data['gender']}"
             ]
 
             # Add optional fields if they exist
@@ -146,6 +154,14 @@ class ApplicationViewer:
             if app_data.get('portfolio'):
                 details.append(f"[bold cyan]Portfolio:[/bold cyan] {app_data['portfolio']}")
 
+            # Add rejection reason if application was rejected
+            if app_data['status'].lower() == 'rejected' and 'rejection_reason' in app_data:
+                details.append(f"\n[bold red]Reason for rejection:[/bold red] {app_data['rejection_reason']}")
+
+            # Add resume information
+            if app_data.get('resume_path'):
+                details.append(f"\n[bold cyan]Resume:[/bold cyan] {app_data['resume_path'].split('/')[-1]}")
+
             self.clear_screen()
             self.console.print(Panel(
                 "\n".join(details),
@@ -154,30 +170,36 @@ class ApplicationViewer:
                 width=100
             ))
 
+            # Show additional options
+            if app_data['status'].lower() == 'pending':
+                self.print_yellow("\nYou can cancel this application from the main menu.")
+
         except Exception as e:
             self.console.print(f"[red]Error viewing application details: {str(e)}[/red]")
 
     def delete_application(self, application_doc):
         try:
+            confirm = self.input_yellow("Are you sure you want to cancel this application? (y/n): ")
+            if confirm.lower() != 'y':
+                return
+
             # Get application data first
             app_data = application_doc.to_dict()
             resume_path = app_data.get('resume_path')
             
             # Delete the resume file from storage if path exists
             if resume_path:
-                storage_manager = StorageManager()
-                if storage_manager.delete_file(resume_path):
+                if self.storage_manager.delete_file(resume_path):
                     self.console.print("[green]Resume file deleted successfully.[/green]")
                 else:
                     self.console.print("[yellow]Warning: Could not delete resume file.[/yellow]")
     
             # Delete the application document
-            application_id = application_doc.id
-            self.db.collection('applications').document(application_id).delete()
-            self.console.print(f"[green]Application {application_id} has been successfully deleted.[/green]")
+            application_doc.reference.delete()
+            self.console.print("[green]Application cancelled successfully.[/green]")
             
         except Exception as e:
-            self.console.print(f"[red]Error deleting application: {str(e)}[/red]")
+            self.console.print(f"[red]Error cancelling application: {str(e)}[/red]")
 
 def main():
     viewer = ApplicationViewer()

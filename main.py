@@ -1,134 +1,156 @@
 from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Prompt
+from rich.table import Table
 from rich import box
-import time, json
+import sys, os
 from pathlib import Path
-from employer.dashboard import EmployerDashboard
+from datetime import datetime
+import json
+
+from authentication import AuthenticationCLI
 from applicant.dashboard import ApplicantDashboard
-import subprocess
-import sys, warnings
-warnings.filterwarnings('ignore', message='.*grpc_wait_for_shutdown_with_timeout.*')
-class JobHiveMain:
+from employer.dashboard import EmployerDashboard
+
+class JobHive:
     def __init__(self):
         self.console = Console()
-        # Get the absolute path to the project root
-        self.project_root = Path(__file__).resolve().parent.parent
+        self.project_root = Path(__file__).parent
+        self.auth = AuthenticationCLI()
 
-    def check_auth(self):
-        """Check if user is authenticated by looking for user.json"""
-        try:
-            user_file = self.project_root / 'JobHive' / 'user.json'
-            if user_file.exists():
-                with open(user_file, 'r') as f:
-                    user_data = json.load(f)
-                    # Verify user data has required fields
-                    if all(key in user_data for key in ['uid', 'email', 'user_type']):
-                        return user_data
-            return None
-        except Exception as e:
-            self.console.print(f"[red]Error checking authentication: {str(e)}[/red]")
-            return None
+    def clear_screen(self):
+        os.system('cls' if os.name == 'nt' else 'clear')
+
+    def create_header(self):
+        header_text = """
+[bold cyan]
+     ██╗ ██████╗ ██████╗ ██╗  ██╗██╗██╗   ██╗███████╗
+     ██║██╔═══██╗██╔══██╗██║  ██║██║██║   ██║██╔════╝
+     ██║██║   ██║██████╔╝███████║██║██║   ██║█████╗  
+██   ██║██║   ██║██╔══██╗██╔══██║██║╚██╗ ██╔╝██╔══╝  
+╚█████╔╝╚██████╔╝██████╔╝██║  ██║██║ ╚████╔╝ ███████╗
+ ╚════╝  ╚═════╝ ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═══╝  ╚══════╝
+[/bold cyan]"""
+        return Panel(header_text, box=box.DOUBLE)
 
     def display_welcome(self):
-        """Display welcome screen"""
-        self.console.clear()
-        self.console.print(Panel.fit(
-            "[bold yellow]Welcome to JobHive[/bold yellow]\n"
-            "[blue]Your Ultimate Job Matching Platform[/blue]",
-            box=box.DOUBLE,
-            padding=(1, 20)
-        ))
+        self.clear_screen()
+        self.console.print(self.create_header())
+        self.console.print("\n[bold cyan]Welcome to JobHive![/bold cyan]")
+        self.console.print("[cyan]Your One-Stop Platform for Job Search and Recruitment[/cyan]\n")
 
-    def launch_auth(self):
-        """Launch authentication script as a separate process"""
-        auth_path = self.project_root / 'JobHive' / 'authentication.py'
-        try:
-            # Check if auth_path exists before running
-            if not auth_path.exists():
-                raise FileNotFoundError(f"Authentication script not found at {auth_path}")
-            
-            subprocess.run([sys.executable, str(auth_path)], check=True)
-            
-            # Give a small delay to ensure file operations are complete
-            time.sleep(0.5)
-            
-        except subprocess.CalledProcessError as e:
-            self.console.print(f"[red]Authentication process failed: {e}[/red]")
-            return False
-        except Exception as e:
-            self.console.print(f"[red]Failed to start authentication: {e}[/red]")
-            return False
-        return True
+    def create_menu(self):
+        menu_items = [
+            "[1] Login",
+            "[2] Register",
+            "[3] About",
+            "[4] Exit"
+        ]
+        menu_text = "\n".join(menu_items)
+        return Panel(menu_text, title="Main Menu", box=box.ROUNDED)
+
+    def display_about(self):
+        self.clear_screen()
+        about_text = """
+[cyan]JobHive is a comprehensive job search and recruitment platform that connects job seekers with employers.
+Our platform offers:[/cyan]
+
+[green]For Job Seekers:[/green]
+• Browse and apply for jobs
+• Track application status
+• Resume review and optimization
+• Save interesting job postings
+
+[green]For Employers:[/green]
+• Post job openings
+• Review applications
+• Manage candidate pipeline
+• Access recruitment tools
+
+[cyan]Version: 1.0.0
+Created by: MST4
+Last Updated: February 2025[/cyan]
+"""
+        self.console.print(Panel(about_text, title="About JobHive", border_style="blue", width=100))
+        self.console.input("\n[yellow]Press Enter to return to main menu...[/yellow]")
+
+    def handle_user_type(self, user_type):
+        if user_type.lower() == 'applicant':
+            dashboard = ApplicantDashboard()
+            dashboard.run()
+        elif user_type.lower() == 'employer':
+            dashboard = EmployerDashboard()
+            dashboard.run()
+        else:
+            self.console.print("[red]Invalid user type![/red]")
+
+    def check_login_status(self):
+        user_file = self.project_root / 'user.json'
+        if user_file.exists():
+            with open(user_file) as f:
+                user_data = json.load(f)
+            return user_data.get('user_type')
+        return None
 
     def run(self):
-        """Main application loop"""
-        while True:
-            try:
-                self.display_welcome()
-                user = self.check_auth()
-
-                if not user:
-                    self.console.print("\n[yellow]Please authenticate to continue[/yellow]")
-                    self.console.print("\n[cyan]Launching authentication system...[/cyan]")
-                    time.sleep(1)
-                    
-                    if not self.launch_auth():
-                        if Prompt.ask(
-                            "\nWould you like to try again?",
-                            choices=["y", "n"],
-                            default="y"
-                        ) == "n":
-                            break
-                        continue
-                        
-                    user = self.check_auth()
-                    if not user:
-                        continue
-
-                # User is authenticated at this point
-                if user['user_type'] == 'employer':
-                    self.console.print("[green]Loading Employer Dashboard...[/green]")
-                    time.sleep(1)
-                    employer_dashboard = EmployerDashboard()
-                    employer_dashboard.run()
-                elif user['user_type'] == 'applicant':
-                    self.console.print("[green]Loading Applicant Dashboard...[/green]")
-                    time.sleep(1)
-                    applicant_dashboard = ApplicantDashboard()
-                    applicant_dashboard.run()
+        try:
+            while True:
+                user_type = self.check_login_status()
+                
+                if user_type:
+                    self.handle_user_type(user_type)
                 else:
-                    self.console.print("[red]Invalid user type! Please re-authenticate.[/red]")
-                    time.sleep(1)
-                    continue
+                    self.display_welcome()
+                    self.console.print(self.create_menu())
+                    
+                    choice = Prompt.ask("\nPlease select an option", choices=["1", "2", "3", "4"])
+                    
+                    if choice == "1":
+                        if self.auth.login():
+                            user_type = self.check_login_status()
+                            if user_type:
+                                self.handle_user_type(user_type)
+                                
+                    elif choice == "2":
+                        self.auth.register()
+                        
+                    elif choice == "3":
+                        self.display_about()
+                        
+                    elif choice == "4":
+                        try:
+                            if Prompt.ask("\n[yellow]Are you sure you want to exit?[/yellow]", 
+                                choices=["y", "n"], default="n") == "y":
+                                self.console.print("\n[cyan]Thank you for using JobHive![/cyan]")
+                                break
+                        except KeyboardInterrupt:
+                            self.console.print("\n[cyan]Goodbye![/cyan]")
+                            break
 
-                if Prompt.ask(
-                    "\nWould you like to continue using JobHive?",
-                    choices=["y", "n"],
-                    default="y"
-                ) == "n":
+                try:
+                    if not Prompt.ask("\nWould you like to continue using JobHive?", 
+                        choices=["y", "n"], default="y") == "y":
+                        if Prompt.ask("\n[yellow]Are you sure you want to exit?[/yellow]", 
+                            choices=["y", "n"], default="n") == "y":
+                            self.console.print("\n[cyan]Thank you for using JobHive![/cyan]")
+                            break
+                except KeyboardInterrupt:
+                    self.console.print("\n[cyan]Goodbye![/cyan]")
                     break
 
-            except KeyboardInterrupt:
-                if Prompt.ask(
-                    "\n[yellow]Are you sure you want to exit?[/yellow]",
-                    choices=["y", "n"],
-                    default="n"
-                ) == "y":
-                    break
-            except Exception as e:
-                self.console.print(f"[red]An error occurred: {str(e)}[/red]")
-                time.sleep(2)
-                if Prompt.ask(
-                    "\nWould you like to try again?",
-                    choices=["y", "n"],
-                    default="y"
-                ) == "n":
-                    break
+        except KeyboardInterrupt:
+            self.console.print("\n[cyan]Goodbye![/cyan]")
+        except Exception as e:
+            self.console.print(f"\n[red]An error occurred: {str(e)}[/red]")
 
-        self.console.print("\n[yellow]Thank you for using JobHive![/yellow]")
-        time.sleep(1)
+def main():
+    app = JobHive()
+    app.run()
 
 if __name__ == "__main__":
-    app = JobHiveMain()
-    app.run()
+    try:
+        main()
+    except KeyboardInterrupt:
+        Console().print("\n[cyan]Goodbye![/cyan]")
+    except Exception as e:
+        Console().print(f"\n[red]An error occurred: {str(e)}[/red]")

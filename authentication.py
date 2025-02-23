@@ -274,7 +274,6 @@ def main():
         choice = Prompt.ask("Select an option", choices=choices)
         
         if choice == "0":
-            auth_cli.console.print("[yellow]Goodbye![/yellow]")
             break
             
         actions = {
