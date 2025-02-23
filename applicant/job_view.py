@@ -111,8 +111,8 @@ class ApplicantJobViewer:
     
             # Resume upload
             while True:
-                resume_path = self.input_yellow("Resume file path (PDF or Word document): ")
-                resume_path = Path(resume_path)  # Convert string to Path object if it's not already
+                self.console.print("[yellow]Resume file path (PDF or Word document): [/yellow]")
+                resume_path = self.open_file_dialog()
                 if not Path(resume_path).exists():
                     self.console.print("[red]File not found. Please enter a valid file path[/red]")
                     continue

@@ -6,6 +6,9 @@ import base64
 from google.genai import types
 from rich.console import Console
 from rich.panel import Panel
+from docx import Document
+from docx.shared import Inches
+from datetime import datetime
 
 # Assuming the presence of some classes and methods (e.g., storage_manager, console) from your setup.
 console = Console()
@@ -101,11 +104,16 @@ class ResumeReviewer:
                 contents=[employer_part, candidate_part, prompt_part]
             )
 
-            # Print the feedback in chunks
+            # Collect feedback chunks
+            feedback_text = ""
             console.print("\nFeedback:\n")
             for chunk in stream:
+                feedback_text += chunk.text
                 console.print(chunk.text, end="")
             console.print("\n")  # Add a newline after feedback
+
+            # Save feedback as Word document
+            self.save_feedback_as_word(feedback_text, candidate_resume_path)
 
         except Exception as e:
             console.print(f"[red]Error comparing resumes: {str(e)}[/red]")
@@ -116,6 +124,41 @@ class ResumeReviewer:
                     os.remove(model_resume_path)
                 except:
                     pass
+
+    def save_feedback_as_word(self, feedback_text: str, resume_path: str):
+        """Save the feedback as a formatted Word document."""
+        try:
+            # Create a new Word document
+            doc = Document()
+
+            # Add title
+            doc.add_heading('Resume Review Feedback', 0)
+
+            # Add timestamp
+            doc.add_paragraph(f'Generated on: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}')
+
+            # Add a line for the reviewed resume
+            doc.add_paragraph(f'Resume reviewed: {Path(resume_path).name}')
+
+            # Add horizontal line
+            doc.add_paragraph('_' * 50)
+
+            # Add feedback content
+            doc.add_heading('Detailed Feedback', 1)
+            doc.add_paragraph(feedback_text)
+
+            # Get the directory of the original resume
+            output_dir = Path(resume_path).parent
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            output_filename = f'resume_feedback_{timestamp}.docx'
+            output_path = output_dir / output_filename
+
+            # Save the document
+            doc.save(str(output_path))
+            console.print(f"\n[green]Feedback saved as: {output_path}[/green]")
+
+        except Exception as e:
+            console.print(f"[red]Error saving feedback document: {str(e)}[/red]")
 
     def download_resume(self, resume_url: str):
         """Download the resume from the provided URL."""
