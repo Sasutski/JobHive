@@ -3,10 +3,9 @@ from rich.panel import Panel
 from rich.prompt import Prompt
 from rich.table import Table
 from rich import box
-import sys, os
+import sys, os, json, requests
 from pathlib import Path
 from datetime import datetime
-import json
 
 from authentication import AuthenticationCLI
 from applicant.dashboard import ApplicantDashboard
@@ -106,51 +105,59 @@ Last Updated: February 2025[/cyan]
                     choice = Prompt.ask("\nPlease select an option", choices=["1", "2", "3", "4"])
                     
                     if choice == "1":
-                        if self.auth.login():
+                        if self.auth.login_flow():
                             user_type = self.check_login_status()
                             if user_type:
                                 self.handle_user_type(user_type)
                                 
                     elif choice == "2":
-                        self.auth.register()
+                        self.auth.create_user_flow()
                         
                     elif choice == "3":
                         self.display_about()
                         
                     elif choice == "4":
-                        try:
-                            if Prompt.ask("\n[yellow]Are you sure you want to exit?[/yellow]", 
-                                choices=["y", "n"], default="n") == "y":
-                                self.console.print("\n[cyan]Thank you for using JobHive![/cyan]")
-                                break
-                        except KeyboardInterrupt:
-                            self.console.print("\n[cyan]Goodbye![/cyan]")
-                            break
+                        self.console.print("\n[cyan]Thank you for using JobHive![/cyan]")
+                        break
 
+                # Simplified continue/exit prompt
                 try:
-                    if not Prompt.ask("\nWould you like to continue using JobHive?", 
-                        choices=["y", "n"], default="y") == "y":
-                        if Prompt.ask("\n[yellow]Are you sure you want to exit?[/yellow]", 
-                            choices=["y", "n"], default="n") == "y":
-                            self.console.print("\n[cyan]Thank you for using JobHive![/cyan]")
-                            break
+                    if Prompt.ask("\nPress Enter to continue or 'x' to exit", 
+                        choices=["x", ""], default="") == "x":
+                        self.console.print("\n[cyan]Thank you for using JobHive![/cyan]")
+                        break
                 except KeyboardInterrupt:
                     self.console.print("\n[cyan]Goodbye![/cyan]")
                     break
 
         except KeyboardInterrupt:
             self.console.print("\n[cyan]Goodbye![/cyan]")
+        except KeyboardInterrupt:
+            self.console.print("\n[cyan]Program terminated by user. Goodbye![/cyan]")
+            sys.exit(0)
+        except FileNotFoundError as e:
+            self.console.print(f"\n[red]Configuration file error: {str(e)}[/red]")
+            sys.exit(1)
+        except json.JSONDecodeError as e:
+            self.console.print(f"\n[red]Invalid configuration format: {str(e)}[/red]")
+            sys.exit(1)
+        except requests.exceptions.RequestException as e:
+            self.console.print(f"\n[red]Network error: {str(e)}[/red]")
+            sys.exit(1)
         except Exception as e:
-            self.console.print(f"\n[red]An error occurred: {str(e)}[/red]")
+            self.console.print(f"\n[red]An unexpected error occurred: {str(e)}[/red]")
+            sys.exit(1)
 
 def main():
-    app = JobHive()
-    app.run()
+    try:
+        app = JobHive()
+        app.run()
+    except KeyboardInterrupt:
+        Console().print("\n[cyan]Program terminated by user. Goodbye![/cyan]")
+        sys.exit(0)
+    except Exception as e:
+        Console().print(f"\n[red]Fatal error: {str(e)}[/red]")
+        sys.exit(1)
 
 if __name__ == "__main__":
-    try:
-        main()
-    except KeyboardInterrupt:
-        Console().print("\n[cyan]Goodbye![/cyan]")
-    except Exception as e:
-        Console().print(f"\n[red]An error occurred: {str(e)}[/red]")
+    main()

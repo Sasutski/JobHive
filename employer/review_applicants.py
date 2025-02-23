@@ -9,6 +9,7 @@ import os, sys, requests, platform, subprocess
 from pathlib import Path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils.storage_manager import StorageManager
+from config import FIREBASE_CONFIG
 
 class ApplicationReviewer:
     def __init__(self):
@@ -18,9 +19,7 @@ class ApplicationReviewer:
         
         try:
             # Get the service account key
-            service_account_key = requests.get(
-                "https://gist.githubusercontent.com/Sasutski/808de9abc7f676ed253cc0f63a0f56b5/raw/serviceAccountKey.json"
-            ).json()
+            service_account_key = requests.get(FIREBASE_CONFIG['service_account_url']).json()
             
             # Check if any Firebase app exists
             try:
@@ -101,8 +100,14 @@ class ApplicationReviewer:
                     self.console.print("[red]Invalid input. Please try again.[/red]")
                     self.input_yellow("\nPress Enter to continue...")
     
+        except requests.exceptions.RequestException as e:
+            self.console.print(f"[red]Network error: Unable to fetch applications. {str(e)}[/red]")
+            self.input_yellow("\nPress Enter to continue...")
+        except firestore.exceptions.FirebaseError as e:
+            self.console.print(f"[red]Database error: Unable to access applications. {str(e)}[/red]")
+            self.input_yellow("\nPress Enter to continue...")
         except Exception as e:
-            self.console.print(f"[red]Error reviewing applications: {str(e)}[/red]")
+            self.console.print(f"[red]Unexpected error while reviewing applications: {str(e)}[/red]")
             self.input_yellow("\nPress Enter to continue...")
 
     def view_job_applications(self, job_doc):

@@ -15,6 +15,7 @@ import platform
 import subprocess
 from utils.storage_manager import StorageManager
 from ai.resume_reviewer import ResumeReviewer, main as resume_reviewer_main
+from config import FIREBASE_CONFIG
 
 warnings.filterwarnings("ignore", category=UserWarning, module="google.cloud.firestore_v1.base_collection")
 warnings.filterwarnings("ignore", category=UserWarning, message="Detected filter using positional arguments.*")
@@ -28,9 +29,7 @@ class ApplicantJobViewer:
         try:
             # Initialize Firebase
             if not firebase_admin._apps:
-                cred_response = requests.get(
-                    "https://gist.githubusercontent.com/Sasutski/808de9abc7f676ed253cc0f63a0f56b5/raw/serviceAccountKey.json"
-                )
+                cred_response = requests.get(FIREBASE_CONFIG['service_account_url'])
                 cred = credentials.Certificate(cred_response.json())
                 self.app = firebase_admin.initialize_app(cred, name='applicant_viewer')
             else:

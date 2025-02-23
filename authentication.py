@@ -8,18 +8,17 @@ from firebase_admin import auth, credentials, firestore
 from firebase_admin._auth_utils import UserNotFoundError, InvalidIdTokenError
 import json, requests, time
 from pathlib import Path
+from config import FIREBASE_CONFIG, SESSION_CONFIG
 
 class AuthenticationCLI:
     def __init__(self):
         self.console = Console()
         self.project_root = Path(__file__).parent
-        self.API_KEY = "AIzaSyAcwreE9k06t8HtJ6vhSOblwCskAEkWRWQ"
+        self.API_KEY = FIREBASE_CONFIG['api_key']
         
         # Initialize Firebase only if not already initialized
         if not firebase_admin._apps:  # Check if no Firebase apps exist
-            cred = credentials.Certificate(requests.get(
-                "https://gist.githubusercontent.com/Sasutski/808de9abc7f676ed253cc0f63a0f56b5/raw/serviceAccountKey.json"
-            ).json())
+            cred = credentials.Certificate(requests.get(FIREBASE_CONFIG['service_account_url']).json())
             firebase_admin.initialize_app(cred)
         
         self.db = firestore.client()
@@ -63,10 +62,11 @@ class AuthenticationCLI:
 
     def login_flow(self):
         try:
-            email = Prompt.ask("Enter email")
-            password = Prompt.ask("Enter password", password=True)
+            self.console.print(Panel("[bold cyan]Login to JobHive[/bold cyan]", box=box.DOUBLE))
+            email = Prompt.ask("\n[bold yellow]Enter your email[/bold yellow]")
+            password = Prompt.ask("[bold yellow]Enter your password[/bold yellow]", password=True)
             
-            with self.console.status("[bold green]Logging in..."):
+            with self.console.status("[bold cyan]Authenticating...[/bold cyan]") as status:
                 response = requests.post(
                     f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={self.API_KEY}",
                     json={"email": email, "password": password, "returnSecureToken": True}
@@ -85,9 +85,28 @@ class AuthenticationCLI:
                     'refresh_token': response['refreshToken'],
                     'user_type': user_doc.to_dict().get('user_type')
                 })
-                self.console.print("[green]Login successful![/green]")
+                
+                self.console.print(Panel(
+                    f"[green]✓ Welcome back, {user.display_name or email}![/green]\n" +
+                    f"[cyan]You are logged in as: {user_doc.to_dict().get('user_type').title()}[/cyan]",
+                    title="Login Successful",
+                    border_style="green"
+                ))
+                return True
+                
+        except requests.exceptions.RequestException as e:
+            self.console.print(Panel(
+                f"[red]Unable to connect to the server. Please check your internet connection.[/red]",
+                title="Connection Error",
+                border_style="red"
+            ))
         except Exception as e:
-            self.console.print(f"[red]Login failed: {str(e)}[/red]")
+            self.console.print(Panel(
+                f"[red]Invalid email or password. Please try again.[/red]",
+                title="Login Failed",
+                border_style="red"
+            ))
+        return False
 
     def create_user_flow(self):
         try:
@@ -182,8 +201,14 @@ class AuthenticationCLI:
                 user_table.add_row(prop, str(value))
                 
             self.console.print(Panel(user_table, title="User Details", border_style="green"))
+        except UserNotFoundError:
+            self.console.print("[red]Error: User not found. Please check the user ID.[/red]")
+        except InvalidIdTokenError:
+            self.console.print("[red]Error: Invalid or expired authentication token. Please login again.[/red]")
+        except requests.exceptions.RequestException as e:
+            self.console.print(f"[red]Network error: Unable to connect to authentication service. {str(e)}[/red]")
         except Exception as e:
-            self.console.print(f"[red]Error: {str(e)}[/red]")
+            self.console.print(f"[red]Unexpected error: {str(e)}[/red]")
 
     def update_user_flow(self):
         try:
@@ -192,6 +217,11 @@ class AuthenticationCLI:
             display_name = Prompt.ask("Enter new display name (press enter to skip)", default="")
             user_type = Prompt.ask("Enter new user type", choices=["", "applicant", "employer"], default="")
             
+            # Validate email format if provided
+            if email and '@' not in email:
+                self.console.print("[red]Error: Invalid email format[/red]")
+                return
+            
             updates = {}
             if email: updates['email'] = email
             if display_name: updates['display_name'] = display_name
@@ -199,7 +229,14 @@ class AuthenticationCLI:
             if updates or user_type:
                 with self.console.status("[bold green]Updating user..."):
                     if updates:
-                        updated_user = auth.update_user(uid, **updates)
+                        try:
+                            updated_user = auth.update_user(uid, **updates)
+                        except auth.UserNotFoundError:
+                            self.console.print("[red]Error: User not found[/red]")
+                            return
+                        except auth.EmailAlreadyExistsError:
+                            self.console.print("[red]Error: Email already in use[/red]")
+                            return
                     
                     if any([email, display_name, user_type]):
                         update_data = {k: v for k, v in {
@@ -215,8 +252,10 @@ class AuthenticationCLI:
                         self._save_session(user_data)
                 
                 self.console.print("[green]User updated successfully![/green]")
+        except requests.exceptions.RequestException as e:
+            self.console.print(f"[red]Network error: Unable to update user. {str(e)}[/red]")
         except Exception as e:
-            self.console.print(f"[red]Error: {str(e)}[/red]")
+            self.console.print(f"[red]Unexpected error while updating user: {str(e)}[/red]")
 
     def logout_flow(self):
         if Confirm.ask("Are you sure you want to logout?"):

@@ -12,6 +12,7 @@ import subprocess
 import platform
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils.storage_manager import StorageManager
+from config import FIREBASE_CONFIG
 
 class JobPoster:
     def __init__(self):
@@ -21,9 +22,7 @@ class JobPoster:
         
         try:
             if not firebase_admin._apps:
-                cred = credentials.Certificate(requests.get(
-                    "https://gist.githubusercontent.com/Sasutski/808de9abc7f676ed253cc0f63a0f56b5/raw/serviceAccountKey.json"
-                ).json())
+                cred = credentials.Certificate(requests.get(FIREBASE_CONFIG['service_account_url']).json())
                 self.app = firebase_admin.initialize_app(cred)
             else:
                 self.app = firebase_admin.get_app()
@@ -268,18 +267,27 @@ class JobPoster:
             else:
                 self.print_yellow("\nJob posting cancelled.")
 
+        except requests.exceptions.RequestException as e:
+            self.console.print(f"[red]Network error: Unable to connect to server. {str(e)}[/red]")
+        except firestore.exceptions.FirebaseError as e:
+            self.console.print(f"[red]Database error: Unable to post job. {str(e)}[/red]")
+        except ValueError as e:
+            self.console.print(f"[red]Invalid input: {str(e)}[/red]")
         except Exception as e:
-            self.console.print(f"[red]Error posting job: {str(e)}[/red]")
+            self.console.print(f"[red]Unexpected error while posting job: {str(e)}[/red]")
         finally:
             self.input_yellow("\nPress Enter to continue...")
 
 def main():
-    poster = JobPoster()
-    poster.post_job()
-
-if __name__ == "__main__":
     try:
-        main()
+        poster = JobPoster()
+        poster.post_job()
     except KeyboardInterrupt:
         Console().print("\n[bold red]Program terminated by user.")
         sys.exit()
+    except Exception as e:
+        Console().print(f"\n[bold red]Fatal error: {str(e)}")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()

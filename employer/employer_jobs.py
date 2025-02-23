@@ -9,6 +9,7 @@ import requests, time, sys, os, json
 from pathlib import Path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils.storage_manager import StorageManager
+from config import FIREBASE_CONFIG
 
 class EmployerJobs:
     def __init__(self):
@@ -18,9 +19,7 @@ class EmployerJobs:
         
         try:
             if not firebase_admin._apps:
-                cred = credentials.Certificate(requests.get(
-                    "https://gist.githubusercontent.com/Sasutski/808de9abc7f676ed253cc0f63a0f56b5/raw/serviceAccountKey.json"
-                ).json())
+                cred = credentials.Certificate(requests.get(FIREBASE_CONFIG['service_account_url']).json())
                 self.app = firebase_admin.initialize_app(cred, name='job_viewer')
             else:
                 try:
@@ -135,8 +134,14 @@ class EmployerJobs:
                     self.console.print("[red]Invalid input. Please try again.[/red]")
                     self.input_yellow("\nPress Enter to continue...")
 
+        except requests.exceptions.RequestException as e:
+            self.console.print(f"[red]Network error: Unable to fetch jobs. {str(e)}[/red]")
+            self.input_yellow("\nPress Enter to continue...")
+        except firestore.exceptions.FirebaseError as e:
+            self.console.print(f"[red]Database error: Unable to access jobs. {str(e)}[/red]")
+            self.input_yellow("\nPress Enter to continue...")
         except Exception as e:
-            self.console.print(f"[red]Error viewing jobs: {str(e)}[/red]")
+            self.console.print(f"[red]Unexpected error while viewing jobs: {str(e)}[/red]")
             self.input_yellow("\nPress Enter to continue...")
 
     def view_job_details(self, job_doc):
