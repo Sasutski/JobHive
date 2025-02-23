@@ -179,7 +179,6 @@ class ApplicationReviewer:
                 table = Table(show_header=True, box=box.SIMPLE)
                 table.add_column("#", style="cyan", justify="right")
                 table.add_column("Job Title", style="cyan")
-                table.add_column("Posted Date", style="white")
                 table.add_column("Status", style="white")
                 table.add_column("Applicants", style="green")
     
@@ -187,13 +186,7 @@ class ApplicationReviewer:
                     job_data = job.to_dict()
                     # Convert Firestore timestamp to string format
                     posted_date = job_data.get('posted_date')
-                    if posted_date:
-                        if isinstance(posted_date, datetime.datetime):
-                            formatted_date = posted_date.strftime("%Y-%m-%d")
-                        else:
-                            formatted_date = posted_date
-                    else:
-                        formatted_date = "N/A"
+
     
                     applicant_count = len(list(self.db.collection('applications')
                                             .where('job_id', '==', job.id)
@@ -202,7 +195,6 @@ class ApplicationReviewer:
                     table.add_row(
                         str(idx),
                         job_data['title'],
-                        formatted_date,
                         job_data.get('status', 'Active'),
                         f"[green]{applicant_count}[/green]"
                     )
