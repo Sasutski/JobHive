@@ -1,9 +1,9 @@
 import os
 import json
 from pathlib import Path
-import google.generativeai as genai
+from google import genai
 import base64
-from google.generativeai import types
+from google.genai import types
 from rich.console import Console
 from rich.panel import Panel
 from docx import Document
@@ -15,7 +15,7 @@ console = Console()
 
 # Configure Generative AI API
 API_KEY = 'AIzaSyBlK25lcxrb9krNnh0PwDFyyae9Vn6rNqA'
-client = genai.configure(api_key=API_KEY)
+client = genai.Client(api_key=API_KEY)
 
 class ResumeReviewer:
     def __init__(self):
@@ -99,8 +99,8 @@ class ResumeReviewer:
             prompt_part = types.Part.from_text(text=prompt_text)
 
             # Call the API using generate_content_stream
-            model = genai.GenerativeModel('gemini-1.5-flash')
-            stream = model.generate_content_stream(
+            stream = client.models.generate_content_stream(
+                model='gemini-1.5-flash',
                 contents=[employer_part, candidate_part, prompt_part]
             )
 
