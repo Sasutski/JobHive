@@ -43,16 +43,9 @@ JobHive is a comprehensive job search and recruitment platform that bridges the 
    cd JobHive
    ```
 
-2. Run build.sh file
+2. Run build.sh file (First installation might take a while)
    ```bash
    ./build.sh
-   ```
-
-3. Configure environment variables (if necessary)
-
-4. Run the application:
-   ```bash
-   python main.py
    ```
 
 ## Usage
