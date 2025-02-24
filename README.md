@@ -39,13 +39,13 @@ JobHive is a comprehensive job search and recruitment platform that bridges the 
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/JobHive.git
+   git clone "https://github.com/yourusername/JobHive.git"
    cd JobHive
    ```
 
-2. Install dependencies:
+2. Run build.sh file
    ```bash
-   pip install -r requirements.txt
+   ./build.sh
    ```
 
 3. Configure environment variables (if necessary)
