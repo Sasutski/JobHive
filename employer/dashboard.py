@@ -1,3 +1,4 @@
+# Import required libraries and modules for UI, navigation, and authentication
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
@@ -7,23 +8,33 @@ import time
 import os
 import json
 from pathlib import Path
+
+# Import employer-specific modules for different functionalities
 from .post_job import JobPoster, main as post_job_main
 from .employer_jobs import EmployerJobs, main as employer_jobs_main
 from .job_view import JobViewer, main as job_view_main
 from .review_applicants import main as review_applicants_main
+
+# Add parent directory to system path for importing authentication module
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from authentication import AuthenticationCLI, main as auth_main_loop
 
+# Define the EmployerDashboard class for managing employer interface and navigation
 class EmployerDashboard:
     def __init__(self):
+        # Initialize console for rich text output
         self.console = Console()
+        # Set project root directory
         self.project_root = Path(__file__).resolve().parent.parent
+        # Initialize authentication CLI
         self.auth_cli = AuthenticationCLI()
+        # Set default employer ID (should be updated on login)
         self.employer_id = "test_employer_id"  # This should be set when user logs in
 
     def check_session(self):
         """Check if user is still logged in and is an employer"""
         try:
+            # Read and verify user data from configuration file
             with open(self.project_root / 'user.json', 'r') as f:
                 user_data = json.load(f)
                 return user_data.get('user_type') == 'employer'
@@ -31,14 +42,17 @@ class EmployerDashboard:
             return False
 
     def clear_screen(self):
+        # Clear terminal screen based on OS
         os.system('cls' if os.name == 'nt' else 'clear')
         self.console.clear()
 
     def create_header(self):
+        # Create dashboard header with styling
         header_text = Text("Employer Dashboard", style="bold white on blue", justify="center")
         return Panel(header_text, box=box.DOUBLE, padding=(1, 1))
 
     def create_menu(self):
+        # Define and create menu options for the dashboard
         menu_items = [
             "[1] Post New Job",
             "[2] View Posted Jobs",
@@ -51,17 +65,21 @@ class EmployerDashboard:
         return Panel(menu_text, title="Menu Options", box=box.ROUNDED, padding=(1, 1))
 
     def loading_animation(self):
+        # Display loading animation during page transitions
         with self.console.status("[bold blue]Loading...", spinner="dots"):
             time.sleep(1.5)
 
     def redirect_to_page(self, choice):
+        # Verify user session before processing
         if not self.check_session():
             return "logout"
             
+        # Show loading animation during transition
         self.loading_animation()
         self.clear_screen()
         
         try:
+            # Handle different menu options
             if choice == "1":
                 self.console.print("[bold green]Redirecting to Post Job page...")
                 post_job_main()
@@ -90,11 +108,13 @@ class EmployerDashboard:
                 return "settings"
                 
         except Exception as e:
+            # Handle and display any errors during redirection
             self.console.print(f"[bold red]Error: {str(e)}")
             time.sleep(2)
             return None
 
     def display_dashboard(self):
+        # Clear screen and display dashboard interface
         self.clear_screen()
         self.console.print(self.create_header())
         self.console.print(self.create_menu())

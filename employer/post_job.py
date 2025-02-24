@@ -1,4 +1,5 @@
 # JobHive/employer/post_job.py
+# Import required libraries and modules
 from rich.console import Console
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
@@ -14,30 +15,40 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils.storage_manager import StorageManager
 from config import FIREBASE_CONFIG
 
+# Define the JobPoster class for managing job postings
 class JobPoster:
     def __init__(self):
+        # Initialize console for rich text output
         self.console = Console()
+        # Set project root directory
         self.project_root = Path(__file__).resolve().parent.parent
+        # Initialize storage manager for handling files
         self.storage_manager = StorageManager()
         
         try:
+            # Initialize Firebase if not already initialized
             if not firebase_admin._apps:
                 cred = credentials.Certificate(requests.get(FIREBASE_CONFIG['service_account_url']).json())
                 self.app = firebase_admin.initialize_app(cred)
             else:
                 self.app = firebase_admin.get_app()
+            # Initialize Firestore client
             self.db = firestore.client(app=self.app)
         except Exception as e:
+            # Handle initialization errors
             self.console.print(f"[red]Error initializing Firebase: {str(e)}[/red]")
             sys.exit(1)
 
     def clear_screen(self):
+        # Clear terminal screen based on OS
         os.system('cls' if os.name == 'nt' else 'clear')
 
     def print_yellow(self, text):
+        # Print text in yellow color
         self.console.print(f"[bold yellow]{text}[/bold yellow]")
 
     def input_yellow(self, prompt):
+        # Get user input with yellow prompt
         return self.console.input(f"[bold yellow]{prompt}[/bold yellow]")
 
     def validate_input(self, prompt, validator=None, error_msg=None):
@@ -53,7 +64,8 @@ class JobPoster:
         system = platform.system()
         
         try:
-            if system == 'Darwin':  # macOS
+            # Handle macOS file dialog
+            if system == 'Darwin':
                 script = '''
                 tell application "System Events"
                     activate
@@ -74,6 +86,7 @@ class JobPoster:
                     return result
                 return None
                 
+            # Handle Windows file dialog
             elif system == 'Windows':
                 script = '''
                 Add-Type -AssemblyName System.Windows.Forms
@@ -90,7 +103,8 @@ class JobPoster:
                     return result
                 return None
                 
-            else:  # Linux or other systems
+            # Handle Linux and other systems
+            else:
                 self.print_yellow("\nNative file dialog not supported on this system.")
                 self.print_yellow("Please enter the file path manually (or press Enter to cancel):")
                 path = input().strip()
@@ -103,14 +117,18 @@ class JobPoster:
             return None
 
     def submit_job(self, job_data):
+        """Submit job posting to Firebase."""
         try:
+            # Get employer ID from user.json
             with open(self.project_root / 'user.json') as f:
                 user_data = json.load(f)
             employer_id = user_data.get('uid')
 
+            # Add employer ID and timestamp to job data
             job_data['employer_id'] = employer_id
             job_data['timestamp'] = firestore.SERVER_TIMESTAMP
 
+            # Create and save job document
             job_ref = self.db.collection('jobs').document()
             job_ref.set(job_data)
             return True
@@ -133,12 +151,14 @@ class JobPoster:
         return '\n'.join(items)
 
     def post_job(self):
+        """Main method to handle job posting process."""
         try:
+            # Initialize job posting interface
             self.clear_screen()
             self.console.print(Panel("[bold cyan]Post a New Job[/bold cyan]", box=box.DOUBLE))
             job_data = {}
 
-            # Basic job details with validation
+            # Collect basic job details with validation
             job_data['title'] = self.validate_input(
                 "Enter job title: ",
                 lambda x: len(x.strip()) >= 3,
@@ -152,6 +172,7 @@ class JobPoster:
                 for idx, jtype in enumerate(job_types, 1)
             ), title="Job Types", border_style="cyan"))
 
+            # Handle job type selection
             while True:
                 try:
                     type_choice = int(self.input_yellow("Select job type (1-4): "))
@@ -162,13 +183,14 @@ class JobPoster:
                 except ValueError:
                     self.console.print("[red]Please enter a valid number.[/red]")
 
+            # Collect location information
             job_data['location'] = self.validate_input(
                 "\nEnter job location: ",
                 lambda x: len(x.strip()) >= 2,
                 "Location must be at least 2 characters long."
             )
 
-            # Salary range with improved validation
+            # Collect salary range with validation
             while True:
                 try:
                     min_salary = int(self.input_yellow("\nEnter minimum salary (in thousands USD): "))
@@ -188,7 +210,7 @@ class JobPoster:
                 except ValueError:
                     self.console.print("[red]Please enter valid numbers for salary.[/red]")
 
-            # Detailed job information with minimum requirements
+            # Collect detailed job information
             self.print_yellow("\nCollecting detailed information...")
             
             job_data['responsibilities'] = self.collect_multiline_input(
@@ -200,8 +222,8 @@ class JobPoster:
             job_data['benefits'] = self.collect_multiline_input(
                 "Enter job benefits", min_items=1)
 
-            # Model resume upload
-            file_path = None  # Initialize file_path variable
+            # Handle model resume upload
+            file_path = None
             if self.input_yellow("\nWould you like to upload a model resume? (y/n): ").lower() == 'y':
                 self.print_yellow("\nOpening file selector...")
                 sys.stdin = open(os.devnull, 'r')
@@ -222,7 +244,7 @@ class JobPoster:
                 finally:
                     sys.stdin = sys.__stdin__
 
-            # Review and submit
+            # Review and submit job posting
             self.clear_screen()
             self.console.print(Panel(
                 "\n".join(f"[cyan]{k}:[/cyan] {v}" for k, v in job_data.items()),
@@ -230,6 +252,7 @@ class JobPoster:
                 border_style="yellow"
             ))
 
+            # Handle job submission
             if self.input_yellow("\nSubmit job posting? (y/n): ").lower() == 'y':
                 with Progress(
                     SpinnerColumn(),
@@ -240,6 +263,7 @@ class JobPoster:
                     try:
                         file_uploaded = False
                         
+                        # Upload model resume if provided
                         if 'model_resume_path' in job_data:
                             progress.update(task, description="[cyan]Uploading resume...")
                             file_uploaded = self.storage_manager.upload_file(file_path, "model_resumes")
@@ -251,6 +275,7 @@ class JobPoster:
                             job_data['model_resume_path'] = file_uploaded['path']
                             job_data['model_resume_url'] = file_uploaded.get('url')
             
+                        # Save job details to database
                         progress.update(task, description="[cyan]Saving job details...")
                         
                         if self.submit_job(job_data):
@@ -261,6 +286,7 @@ class JobPoster:
                             self.print_yellow("\nFailed to post job. Any uploaded files were removed.")
                         
                     except Exception as e:
+                        # Clean up uploaded files on error
                         if file_uploaded:
                             self.storage_manager.delete_file(job_data['model_resume_path'])
                         self.print_yellow(f"\nError occurred: {str(e)}. Any uploaded files were removed.")
@@ -278,6 +304,7 @@ class JobPoster:
         finally:
             self.input_yellow("\nPress Enter to continue...")
 
+# Main function to run the job poster
 def main():
     try:
         poster = JobPoster()
@@ -289,5 +316,6 @@ def main():
         Console().print(f"\n[bold red]Fatal error: {str(e)}")
         sys.exit(1)
 
+# Entry point of the script
 if __name__ == "__main__":
     main()

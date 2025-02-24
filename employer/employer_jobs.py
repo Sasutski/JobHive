@@ -1,4 +1,5 @@
 # JobHive/employer/employer_jobs.py
+# Import required libraries for UI, Firebase operations, and file handling
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
@@ -11,34 +12,46 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils.storage_manager import StorageManager
 from config import FIREBASE_CONFIG
 
+# Define the EmployerJobs class for managing employer's job postings
 class EmployerJobs:
     def __init__(self):
+        # Initialize console for rich text output
         self.console = Console()
+        # Set project root directory
         self.project_root = Path(__file__).resolve().parent.parent
+        # Initialize storage manager for handling files
         self.storage_manager = StorageManager()
         
         try:
+            # Initialize Firebase with appropriate credentials
             if not firebase_admin._apps:
                 cred = credentials.Certificate(requests.get(FIREBASE_CONFIG['service_account_url']).json())
                 self.app = firebase_admin.initialize_app(cred, name='job_viewer')
             else:
                 try:
+                    # Try to get existing job viewer app
                     self.app = firebase_admin.get_app('job_viewer')
                 except ValueError:
+                    # Fallback to default app
                     self.app = firebase_admin.get_app()
                     
+            # Initialize Firestore client
             self.db = firestore.client(app=self.app)
         except Exception as e:
+            # Handle initialization errors
             self.console.print(f"[red]Error initializing Firebase: {str(e)}[/red]")
             sys.exit(1)
 
     def clear_screen(self):
+        # Clear terminal screen based on OS
         os.system('cls' if os.name == 'nt' else 'clear')
 
     def print_yellow(self, text):
+        # Print text in yellow color
         self.console.print(f"[bold yellow]{text}[/bold yellow]")
 
     def input_yellow(self, prompt):
+        # Get user input with yellow prompt
         return self.console.input(f"[bold yellow]{prompt}[/bold yellow]")
 
     def view_all_jobs(self):
@@ -59,7 +72,7 @@ class EmployerJobs:
                 return
 
             try:
-                # Query Firestore directly with employer_id filter
+                # Query Firestore for jobs posted by this employer
                 jobs_ref = self.db.collection('jobs')
                 jobs = jobs_ref.where('employer_id', '==', employer_id).get()
                 jobs_list = list(jobs)
@@ -69,6 +82,7 @@ class EmployerJobs:
                 self.input_yellow("\nPress Enter to continue...")
                 return
 
+            # Display message if no jobs found
             if not jobs_list:
                 self.console.print(Panel("[yellow]You haven't posted any jobs yet.[/yellow]", 
                                        title="Posted Jobs", border_style="red"))
@@ -76,6 +90,7 @@ class EmployerJobs:
                 return
 
             while True:
+                # Clear screen and create table for jobs
                 self.clear_screen()
                 table = Table(show_header=True, box=box.SIMPLE)
                 table.add_column("#", style="cyan", justify="right")
@@ -85,6 +100,7 @@ class EmployerJobs:
                 table.add_column("Salary Range", style="white")
                 table.add_column("Posted Date", style="white")
 
+                # Populate table with job information
                 for idx, job in enumerate(jobs_list, 1):
                     job_data = job.to_dict()
                     posted_date = job_data.get('timestamp').strftime("%Y-%m-%d") if job_data.get('timestamp') else "N/A"
@@ -98,6 +114,7 @@ class EmployerJobs:
                         posted_date
                     )
 
+                # Display jobs table and options
                 self.console.print(Panel(table, title="Posted Jobs", border_style="blue"))
                 
                 self.print_yellow("\nOptions:")
@@ -105,12 +122,14 @@ class EmployerJobs:
                 self.print_yellow("2. Delete job (enter 'd' followed by job number)")
                 self.print_yellow("3. Return (enter 'x')")
                 
+                # Process user choice
                 choice = self.input_yellow("\nChoice: ").lower()
 
                 if choice == 'x':
                     break
                 elif choice.startswith('d'):
                     try:
+                        # Handle job deletion
                         idx = int(choice[1:]) - 1
                         if 0 <= idx < len(jobs_list):
                             if self.delete_job(jobs_list[idx]):
@@ -123,6 +142,7 @@ class EmployerJobs:
                         self.console.print("[red]Invalid input. Please try again.[/red]")
                         self.input_yellow("\nPress Enter to continue...")
                 elif choice.isdigit():
+                    # View job details
                     idx = int(choice) - 1
                     if 0 <= idx < len(jobs_list):
                         self.view_job_details(jobs_list[idx])
@@ -146,6 +166,7 @@ class EmployerJobs:
 
     def view_job_details(self, job_doc):
         try:
+            # Get job data and prepare details for display
             job_data = job_doc.to_dict()
             
             details = [
@@ -161,6 +182,7 @@ class EmployerJobs:
                 *[f"• {benefit}" for benefit in job_data.get('benefits', '').split('\n') if benefit]
             ]
 
+            # Display job details in a panel
             self.clear_screen()
             self.console.print(Panel(
                 "\n".join(details),
@@ -174,6 +196,7 @@ class EmployerJobs:
 
     def delete_job(self, job_doc):
         try:
+            # Confirm deletion with user
             confirm = self.input_yellow("Are you sure you want to delete this job? (y/n): ")
             if confirm.lower() == 'y':
                 # Get the job data and ID
@@ -200,10 +223,12 @@ class EmployerJobs:
             self.console.print(f"[red]Error deleting job: {str(e)}[/red]")
             return False
 
+# Main function to run the employer jobs viewer
 def main():
     viewer = EmployerJobs()
     viewer.view_all_jobs()
 
+# Entry point of the script
 if __name__ == "__main__":
     try:
         main()

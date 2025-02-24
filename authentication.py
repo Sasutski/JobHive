@@ -46,6 +46,7 @@ class AuthenticationCLI:
         if self.current_user:
             self.console.print(f"[green]Logged in as: {self.current_user['email']} ({self.current_user['user_type']})[/green]")
 
+        # Create and display menu options based on login status
         menu_table = Table(show_header=False, box=box.SIMPLE)
         menu_table.add_column("Option", style="cyan")
         menu_table.add_column("Description", style="white")

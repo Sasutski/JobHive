@@ -11,10 +11,14 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils.storage_manager import StorageManager
 from config import FIREBASE_CONFIG
 
+# Define the ApplicationReviewer class for managing job applications from employer's perspective
 class ApplicationReviewer:
     def __init__(self):
+        # Initialize console for rich text output
         self.console = Console()
+        # Set project root directory
         self.project_root = Path(__file__).resolve().parent.parent
+        # Initialize storage manager for handling files
         self.storage_manager = StorageManager()
         
         try:
@@ -29,6 +33,7 @@ class ApplicationReviewer:
                 cred = credentials.Certificate(service_account_key)
                 self.app = firebase_admin.initialize_app(cred)
             
+            # Initialize Firestore client
             self.db = firestore.client()
             
         except Exception as e:
@@ -37,12 +42,15 @@ class ApplicationReviewer:
             sys.exit(1)
 
     def clear_screen(self):
+        # Clear terminal screen based on OS
         os.system('cls' if os.name == 'nt' else 'clear')
 
     def print_yellow(self, text):
+        # Print text in yellow color
         self.console.print(f"[bold yellow]{text}[/bold yellow]")
 
     def input_yellow(self, prompt):
+        # Get user input with yellow prompt
         return self.console.input(f"[bold yellow]{prompt}[/bold yellow]")
 
     def review_applications(self):
@@ -50,9 +58,11 @@ class ApplicationReviewer:
             while True:
                 self.clear_screen()
                 # Get all jobs posted by the employer
+                # Get all jobs posted by the employer
                 jobs = self.db.collection('jobs').get()
                 jobs_list = list(jobs)
     
+                # Display message if no jobs found
                 if not jobs_list:
                     self.console.print(Panel("[yellow]No jobs posted yet[/yellow]", 
                                           title="Jobs", border_style="red"))
@@ -60,12 +70,14 @@ class ApplicationReviewer:
                     break
     
                 # Create table to display jobs
+                # Create table to display jobs
                 table = Table(show_header=True, box=box.SIMPLE)
                 table.add_column("#", style="cyan", justify="right")
                 table.add_column("Job Title", style="cyan")
                 table.add_column("Status", style="white")
                 table.add_column("Applicants", style="green")
     
+                # Populate table with job information
                 for idx, job in enumerate(jobs_list, 1):
                     job_data = job.to_dict()
                     applicant_count = len(list(self.db.collection('applications')
@@ -79,12 +91,14 @@ class ApplicationReviewer:
                         f"[green]{applicant_count}[/green]"
                     )
     
+                # Display jobs table and options
                 self.console.print(Panel(table, title="Your Posted Jobs", border_style="blue"))
                 
                 self.print_yellow("\nOptions:")
                 self.print_yellow("1. View applications (enter job number)")
                 self.print_yellow("2. Return to dashboard (enter 'x')")
                 
+                # Process user choice
                 choice = self.input_yellow("\nChoice: ").lower()
     
                 if choice == 'x':
@@ -124,6 +138,7 @@ class ApplicationReviewer:
                     self.input_yellow("\nPress Enter to continue...")
                     return
 
+                # Create table to display jobs
                 table = Table(show_header=True, box=box.SIMPLE)
                 table.add_column("#", style="cyan", justify="right")
                 table.add_column("Applicant", style="cyan")
@@ -151,6 +166,7 @@ class ApplicationReviewer:
                 self.print_yellow("1. View application details (enter application number)")
                 self.print_yellow("2. Return (enter 'x')")
                 
+                # Process user choice
                 choice = self.input_yellow("\nChoice: ").lower()
 
                 if choice == 'x':
@@ -284,19 +300,21 @@ class ApplicationReviewer:
                 # Save to Desktop
                 save_path = str(Path.home() / "Desktop" / original_filename)
             else:
+                # Default to desktop for invalid choice
                 self.console.print("[red]Invalid choice. Saving to desktop.[/red]")
                 save_path = str(Path.home() / "Desktop" / original_filename)
     
             # Create directory if it doesn't exist
             Path(save_path).parent.mkdir(parents=True, exist_ok=True)
     
-            # Download the file
+            # Download and save the resume file
             if self.storage_manager.download_file(resume_path, save_path):
                 self.console.print(f"[green]Resume downloaded successfully to: {save_path}[/green]")
                 
-                # Ask if user wants to open the file
+                # Offer to open the downloaded file
                 if self.input_yellow("\nWould you like to open the resume? (y/n): ").lower() == 'y':
                     try:
+                        # Open file based on operating system
                         if platform.system() == 'Darwin':  # macOS
                             subprocess.run(['open', save_path])
                         elif platform.system() == 'Windows':
@@ -310,28 +328,34 @@ class ApplicationReviewer:
             
     
         except Exception as e:
+            # Handle errors in resume download
             self.console.print(f"[red]Error downloading resume: {str(e)}[/red]")
             self.input_yellow("\nPress Enter to continue...")
 
     def update_application_status(self, application_doc, status, message=None):
         """Update application status and add rejection message if applicable."""
         try:
+            # Prepare update data
             update_data = {'status': status}
             
             # Add rejection message if status is 'rejected' and message is provided
             if status.lower() == 'rejected' and message:
                 update_data['rejection_reason'] = message
 
+            # Update the application document
             application_doc.reference.update(update_data)
             return True
         except Exception as e:
+            # Handle errors in status update
             self.console.print(f"[red]Error updating application status: {str(e)}[/red]")
             return False
 
+# Main function to run the application reviewer
 def main():
     reviewer = ApplicationReviewer()
     reviewer.review_applications()
 
+# Entry point of the script
 if __name__ == "__main__":
     try:
         main()

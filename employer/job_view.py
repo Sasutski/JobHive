@@ -1,4 +1,5 @@
 # JobHive/employer/job_view.py
+# Import required libraries and modules for UI, database, and utilities
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
@@ -9,16 +10,22 @@ import requests, time, sys, warnings, os
 from pathlib import Path
 from difflib import SequenceMatcher
 
+# Suppress Firestore warnings for better user experience
 warnings.filterwarnings("ignore", category=UserWarning, module="google.cloud.firestore_v1.base_collection")
 
+# Define the JobViewer class for managing job listings from employer's perspective
 class JobViewer:
     def __init__(self):
+        # Initialize console for rich text output
         self.console = Console()
+        # Set project root directory
         self.project_root = Path(__file__).resolve().parent.parent
         
         try:
+            # Try to get existing Firestore client
             self.db = firestore.client()
         except ValueError:
+            # If no client exists, initialize Firebase with credentials
             cred = credentials.Certificate(requests.get(
                 "https://gist.githubusercontent.com/Sasutski/808de9abc7f676ed253cc0f63a0f56b5/raw/serviceAccountKey.json"
             ).json())
@@ -26,36 +33,47 @@ class JobViewer:
             self.db = firestore.client()
 
     def clear_screen(self):
+        # Clear terminal screen based on OS
         os.system('cls' if os.name == 'nt' else 'clear')
 
     def print_yellow(self, text):
+        # Print text in yellow color
         self.console.print(f"[bold yellow]{text}[/bold yellow]")
 
     def input_yellow(self, prompt):
+        # Get user input with yellow prompt
         return self.console.input(f"[bold yellow]{prompt}[/bold yellow]")
 
     def _title_similarity(self, title1, title2):
+        # Calculate similarity between two job titles
         title1 = title1.lower()
         title2 = title2.lower()
         
+        # Check if one title contains the other
         if title1 in title2 or title2 in title1:
             return 1.0
             
+        # Calculate similarity ratio using SequenceMatcher
         return SequenceMatcher(None, title1, title2).ratio()
 
     def view_all_jobs(self, filters=None, page=0, page_size=5):
         try:
+            # Clear screen for new display
             self.clear_screen()
+            # Initialize query for jobs collection
             query = self.db.collection('jobs')
             
+            # Apply filters if provided
             if filters:
                 if filters.get('job_type'):
                     query = query.where('job_type', '==', filters['job_type'])
                 if filters.get('location'):
                     query = query.where('location', '==', filters['location'])
             
+            # Get all jobs matching the query
             jobs = list(query.get())
             
+            # Filter by title similarity if title filter is provided
             if filters and filters.get('title'):
                 search_term = filters['title']
                 jobs = [
@@ -63,10 +81,12 @@ class JobViewer:
                     if self._title_similarity(search_term, job.to_dict()['title']) >= 0.6
                 ]
             
+            # Filter by salary range if provided
             if filters and filters.get('salary_range'):
                 min_salary, max_salary = filters['salary_range']
                 jobs = [job for job in jobs if self._is_salary_in_range(job.to_dict(), min_salary, max_salary)]
             
+            # Display message if no jobs found
             if not jobs:
                 self.console.print(Panel(
                     "[yellow]No jobs found matching the following criteria:[/yellow]\n" +
@@ -78,11 +98,13 @@ class JobViewer:
                 self.input_yellow("\nPress Enter to continue...")
                 return None
 
+            # Calculate pagination
             total_pages = (len(jobs) - 1) // page_size + 1
             start_idx = page * page_size
             end_idx = min(start_idx + page_size, len(jobs))
             current_jobs = jobs[start_idx:end_idx]
 
+            # Create and format table for displaying jobs
             job_table = Table(show_header=True, box=box.SIMPLE)
             job_table.add_column("#", style="cyan", justify="right")
             job_table.add_column("Title", style="white")
@@ -90,6 +112,7 @@ class JobViewer:
             job_table.add_column("Type", style="white")
             job_table.add_column("Salary Range", style="white")
             
+            # Add jobs to table
             for idx, job in enumerate(current_jobs, start_idx + 1):
                 job_data = job.to_dict()
                 job_table.add_row(
