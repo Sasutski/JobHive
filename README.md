@@ -66,19 +66,6 @@ JobHive is a comprehensive job search and recruitment platform that bridges the 
 3. Screen candidates efficiently
 4. Provide structured feedback to applicants
 
-## API Reference
-
-### Job Management
-
-- `get_all_jobs()`: Retrieve all available jobs
-- `get_job_by_id()`: Get specific job details
-- `get_jobs_by_tag()`: Filter jobs by tags
-- `get_my_posted_jobs()`: View posted jobs
-- `update_job()`: Modify job listings
-- `delete_job()`: Remove job postings
-- `search_jobs()`: Search by title/description
-- `get_recent_jobs()`: View latest postings
-
 ## Contributing
 
 We welcome contributions to JobHive! Please follow these steps:
