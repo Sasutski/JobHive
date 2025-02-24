@@ -5,7 +5,31 @@
 
 ## Overview
 
-JobHive is a comprehensive job search and recruitment platform that bridges the gap between job seekers and employers. Built with Python, it offers a streamlined experience for both candidates and recruiters, featuring intelligent resume analysis and detailed application tracking.
+JobHive revolutionizes the job search experience by addressing the common frustrations and inefficiencies in the traditional hiring process. Our platform transforms job hunting from a tedious chore into a streamlined, transparent, and empowering journey for both job seekers and employers.
+
+Built with Python, JobHive offers innovative solutions to persistent challenges:
+- **Application Tracking Nightmare?** Our centralized dashboard brings all your applications into one place
+- **Salary Uncertainty?** Access real-time market data and negotiation insights
+- **Radio Silence After Applying?** Get transparent status updates and meaningful feedback
+- **Repetitive Applications?** Use our one-click apply feature across multiple job boards
+- **Unclear Rejection Reasons?** Receive structured feedback to improve your next application
+
+## Design Criteria
+
+1. Load different pages and all data in less than 5 seconds
+   - Ensures users have a smooth and frustration-free experience
+   - Enables quick access to job listings and application features
+
+2. AI-powered resume analysis response time under 30 seconds
+   - Provides quick feedback on resume quality and job fit
+   - Enables rapid iteration on resume improvements
+   - Helps candidates with career breaks highlight relevant experience
+   - Suggests personalized improvements based on job requirements
+
+3. Able to personalise search results
+   - Enhances user accessibility
+   - Customizes job results based on preferences
+   - Filters by location, work hours, and experience level
 
 ## Key Features
 
@@ -13,27 +37,37 @@ JobHive is a comprehensive job search and recruitment platform that bridges the 
   - Intuitive search functionality
   - Multiple filtering options
   - Real-time job updates
+  - Salary insights and market data
+  - Smart job recommendations
 
 - **Smart Resume Analysis**
   - AI-powered resume review
   - Comparison with job requirements
   - Detailed feedback and suggestions
+  - Career gap optimization
+  - Skills gap analysis
 
 - **Application Management**
   - Track application status
   - View application history
   - Receive status notifications
+  - One-click multi-platform apply
+  - Automated follow-up reminders
 
 - **Employer Tools**
   - Easy job posting interface
   - Applicant tracking system
   - Resume screening capabilities
   - Rejection reasoning system
+  - Structured feedback templates
+  - Candidate engagement metrics
 
 - **Security**
   - User authentication
   - Role-based authorization
   - Secure file handling
+  - Data encryption
+  - Privacy compliance
 
 ## Installation
 
@@ -58,6 +92,8 @@ JobHive is a comprehensive job search and recruitment platform that bridges the 
 4. Submit applications with resume
 5. Track application status
 6. Receive AI-powered resume feedback
+7. Access salary insights and negotiation tips
+8. Get personalized job recommendations
 
 ### For Employers
 
@@ -65,6 +101,8 @@ JobHive is a comprehensive job search and recruitment platform that bridges the 
 2. Review and manage applications
 3. Screen candidates efficiently
 4. Provide structured feedback to applicants
+5. Track candidate engagement metrics
+6. Access recruitment analytics
 
 ## Contributing
 
