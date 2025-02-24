@@ -64,54 +64,127 @@ class AuthenticationCLI:
         try:
             self.console.print(Panel("[bold cyan]Login to JobHive[/bold cyan]", box=box.DOUBLE))
             email = Prompt.ask("\n[bold yellow]Enter your email[/bold yellow]")
+            
+            # Validate email format
+            if '@' not in email or '.' not in email:
+                self.console.print(Panel(
+                    "[red]Invalid email format. Please enter a valid email address.[/red]",
+                    title="Email Error",
+                    border_style="red"
+                ))
+                return False
+                
             password = Prompt.ask("[bold yellow]Enter your password[/bold yellow]", password=True)
             
-            with self.console.status("[bold cyan]Authenticating...[/bold cyan]") as status:
-                response = requests.post(
-                    f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={self.API_KEY}",
-                    json={"email": email, "password": password, "returnSecureToken": True}
-                ).json()
-                
-                user = auth.get_user(response['localId'])
-                user_doc = self.db.collection('users').document(user.uid).get()
-                
-                self._save_session({
-                    'uid': user.uid,
-                    'email': user.email,
-                    'display_name': user.display_name,
-                    'email_verified': user.email_verified,
-                    'disabled': user.disabled,
-                    'id_token': response['idToken'],
-                    'refresh_token': response['refreshToken'],
-                    'user_type': user_doc.to_dict().get('user_type')
-                })
-                
+            # Validate password length
+            if len(password) < 6:
                 self.console.print(Panel(
-                    f"[green]✓ Welcome back, {user.display_name or email}![/green]\n" +
-                    f"[cyan]You are logged in as: {user_doc.to_dict().get('user_type').title()}[/cyan]",
-                    title="Login Successful",
-                    border_style="green"
+                    "[red]Password must be at least 6 characters long.[/red]",
+                    title="Password Error",
+                    border_style="red"
                 ))
-                return True
+                return False
+            
+            with self.console.status("[bold cyan]Authenticating...[/bold cyan]") as status:
+                try:
+                    response = requests.post(
+                        f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={self.API_KEY}",
+                        json={"email": email, "password": password, "returnSecureToken": True}
+                    )
+                    
+                    # Check for HTTP errors
+                    response.raise_for_status()
+                    response_data = response.json()
+                    
+                    # Check for authentication errors
+                    if 'error' in response_data:
+                        error_message = response_data['error'].get('message', 'Unknown error')
+                        if 'EMAIL_NOT_FOUND' in error_message:
+                            raise ValueError("Email not found. Please check your email address.")
+                        elif 'INVALID_PASSWORD' in error_message:
+                            raise ValueError("Incorrect password. Please try again.")
+                        else:
+                            raise ValueError(f"Authentication failed: {error_message}")
+                    
+                    user = auth.get_user(response_data['localId'])
+                    user_doc = self.db.collection('users').document(user.uid).get()
+                    
+                    self._save_session({
+                        'uid': user.uid,
+                        'email': user.email,
+                        'display_name': user.display_name,
+                        'email_verified': user.email_verified,
+                        'disabled': user.disabled,
+                        'id_token': response_data['idToken'],
+                        'refresh_token': response_data['refreshToken'],
+                        'user_type': user_doc.to_dict().get('user_type')
+                    })
+                    
+                    self.console.print(Panel(
+                        f"[green]✓ Welcome back, {user.display_name or email}![/green]\n" +
+                        f"[cyan]You are logged in as: {user_doc.to_dict().get('user_type').title()}[/cyan]",
+                        title="Login Successful",
+                        border_style="green"
+                    ))
+                    return True
+                    
+                except requests.exceptions.RequestException as e:
+                    raise ConnectionError("Unable to connect to the server. Please check your internet connection.")
+                except ValueError as e:
+                    raise ValueError(str(e))
                 
-        except requests.exceptions.RequestException as e:
+        except ConnectionError as e:
             self.console.print(Panel(
-                f"[red]Unable to connect to the server. Please check your internet connection.[/red]",
+                f"[red]{str(e)}[/red]",
                 title="Connection Error",
+                border_style="red"
+            ))
+        except ValueError as e:
+            self.console.print(Panel(
+                f"[red]{str(e)}[/red]",
+                title="Login Failed",
                 border_style="red"
             ))
         except Exception as e:
             self.console.print(Panel(
-                f"[red]Invalid email or password. Please try again.[/red]",
-                title="Login Failed",
+                "[red]An unexpected error occurred. Please try again.[/red]",
+                title="Error",
                 border_style="red"
             ))
         return False
 
     def create_user_flow(self):
         try:
-            email = Prompt.ask("Enter email")
-            password = Prompt.ask("Enter password", password=True)
+            while True:
+                self.console.clear()  # Clear screen before each attempt
+                self.console.print(Panel("[bold cyan]Create New User[/bold cyan]", box=box.DOUBLE))
+                email = Prompt.ask("Enter email")
+                
+                # Validate email format immediately
+                if '@' not in email or '.' not in email:
+                    self.console.print(Panel(
+                        "[red]Invalid email format. Please enter a valid email address.[/red]",
+                        title="Email Error",
+                        border_style="red"
+                    ))
+                    time.sleep(1)  # Reduced delay from 2 seconds to 1 second
+                    continue
+                break
+                
+            while True:
+                password = Prompt.ask("Enter password", password=True)
+                
+                # Validate password length immediately
+                if len(password) < 6:
+                    self.console.print(Panel(
+                        "[red]Password must be at least 6 characters long.[/red]",
+                        title="Password Error",
+                        border_style="red"
+                    ))
+                    time.sleep(1)
+                    continue
+                break
+                
             display_name = Prompt.ask("Enter display name", default="")
             user_type = Prompt.ask("Select user type", choices=["applicant", "employer"], default="applicant")
             
