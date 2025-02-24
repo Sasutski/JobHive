@@ -7,8 +7,8 @@ fi
 source venv/bin/activate
 
 # Upgrade pip and install dependencies
-pip install --upgrade pip
-pip install -r requirements.txt
+pip install -q --upgrade pip
+pip install -q -r requirements.txt
 
 python3 main.py
 

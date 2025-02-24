@@ -14,4 +14,3 @@ urllib3==1.26.20
 pycryptodome
 python-docx
 rich
-google-generativeai
