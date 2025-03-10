@@ -506,9 +506,6 @@ class ApplicantJobViewer:
                         self.console.print("[red]Error: Unable to initialize resume reviewer. Please try again later.[/red]")
                         return
 
-                    # Check if job posting has a model resume
-                    model_resume_url = job_data.get('model_resume_url')
-
                     # Allow user to upload resume for review without applying
                     self.console.print(Panel(
                         "[cyan]To review your resume against this job's requirements, please select your resume file.[/cyan]",
@@ -526,11 +523,28 @@ class ApplicantJobViewer:
                         self.console.print("[red]Unsupported file type. Please use PDF or Word document.[/red]")
                         return
 
+                    # Ask for the model resume file path
+                    self.console.print(Panel(
+                        "[cyan]Please select the model resume file for comparison.[/cyan]",
+                        title="Model Resume Selection",
+                        border_style="blue",
+                        width=60
+                    ))
+
+                    model_resume_path = self.open_file_dialog()
+                    if not model_resume_path:
+                        self.console.print("[yellow]Model resume selection cancelled.[/yellow]")
+                        return
+
+                    if not model_resume_path.lower().endswith(('.pdf', '.doc', '.docx')):
+                        self.console.print("[red]Unsupported file type for model resume. Please use PDF or Word document.[/red]")
+                        return
+
                     # Skip upload and directly process the resume for review
                     self.console.print("[yellow]Analyzing your resume against job requirements...\nThis may take a moment.[/yellow]")
-                    
+
                     # Proceed with resume review without uploading
-                    reviewer.review_resume(resume_path, model_resume_url)
+                    reviewer.review_resume(resume_path, model_resume_path)
 
                 except (ImportError, ModuleNotFoundError) as e:
                     self.console.print(Panel(
@@ -550,7 +564,6 @@ class ApplicantJobViewer:
                         width=60
                     ))
                     self.input_yellow("\nPress Enter to continue...")
-
 
             elif choice == "2":
                 self.apply_for_job(job_id, job_data['title'])

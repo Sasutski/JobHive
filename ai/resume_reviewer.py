@@ -26,12 +26,17 @@ class ResumeReviewer:
         # This would integrate with your actual file dialog logic
         return "path_to_selected_resume.pdf"
 
-    def review_resume(self, resume_path: str, model_resume_url: str):
+    def review_resume(self, resume_path: str, model_resume_path: str):
         """Review the candidate resume against the model resume."""
         try:
             # Check if the resume is a valid PDF or Word document
             if not resume_path.lower().endswith(('.pdf', '.doc', '.docx')):
                 console.print("[red]Unsupported file type. Please use PDF or Word document.[/red]")
+                return
+
+            # Check if the model resume is a valid PDF or Word document
+            if not model_resume_path.lower().endswith(('.pdf', '.doc', '.docx')):
+                console.print("[red]Unsupported file type for model resume. Please use PDF or Word document.[/red]")
                 return
 
             # No need to upload the file, we just proceed to the review step
@@ -42,8 +47,8 @@ class ResumeReviewer:
                 width=60
             ))
 
-            # Directly process the review for the locally selected candidate resume and model resume URL
-            self.analyze_resumes(resume_path, model_resume_url)
+            # Directly process the review for the locally selected candidate resume and model resume
+            self.analyze_resumes(resume_path, model_resume_path)
 
         except Exception as e:
             console.print(Panel(
@@ -54,17 +59,15 @@ class ResumeReviewer:
                 width=60
             ))
 
-    def analyze_resumes(self, candidate_resume_path: str, model_resume_url: str):
+    def analyze_resumes(self, candidate_resume_path: str, model_resume_path: str):
         """Analyze and compare the candidate's resume against the employer's model resume."""
         try:
             if not os.path.exists(candidate_resume_path):
                 console.print("[red]Error: Candidate resume file not found[/red]")
                 return
 
-            # Download the model resume from the URL
-            model_resume_path = self.download_resume(model_resume_url)
-            if not model_resume_path:
-                console.print("[red]Error: Could not download model resume[/red]")
+            if not os.path.exists(model_resume_path):
+                console.print("[red]Error: Model resume file not found[/red]")
                 return
 
             # Read the resumes as bytes
@@ -85,7 +88,7 @@ class ResumeReviewer:
             prompt_text = (
                 "You are a professional resume reviewer. "
                 "Please compare the following candidate's resume with the employer's model resume. "
-                "Provide a brief summary of the employer's model resume and its strengths. "
+                "Provide a brief summary in plain text but with proper paragraphing of the employer's model resume and its strengths."
                 "Then provide detailed feedback on the candidate's resume, highlighting strengths, weaknesses, "
                 "and areas for improvement. Be specific and constructive.\n\n"
                 f"Employer's Model Resume (base64):\n{employer_data}\n\n"
