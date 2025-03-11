@@ -5,7 +5,7 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich import box
 import firebase_admin
 from firebase_admin import firestore, credentials
-import os, sys, requests, platform, subprocess
+import os, sys, requests, platform, subprocess, json
 from pathlib import Path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils.storage_manager import StorageManager
@@ -55,28 +55,32 @@ class ApplicationReviewer:
 
     def review_applications(self):
         try:
+            # Get employer ID from user.json
+            user_json_path = self.project_root / 'user.json'
+            with open(user_json_path) as f:
+                user_data = json.load(f)
+            employer_id = user_data.get('uid')
+
             while True:
                 self.clear_screen()
                 # Get all jobs posted by the employer
-                # Get all jobs posted by the employer
-                jobs = self.db.collection('jobs').get()
+                jobs = self.db.collection('jobs').where('employer_id', '==', employer_id).get()
                 jobs_list = list(jobs)
-    
+
                 # Display message if no jobs found
                 if not jobs_list:
                     self.console.print(Panel("[yellow]No jobs posted yet[/yellow]", 
                                           title="Jobs", border_style="red"))
                     self.input_yellow("\nPress Enter to return...")
                     break
-    
-                # Create table to display jobs
+
                 # Create table to display jobs
                 table = Table(show_header=True, box=box.SIMPLE)
                 table.add_column("#", style="cyan", justify="right")
                 table.add_column("Job Title", style="cyan")
                 table.add_column("Status", style="white")
                 table.add_column("Applicants", style="green")
-    
+
                 # Populate table with job information
                 for idx, job in enumerate(jobs_list, 1):
                     job_data = job.to_dict()
@@ -90,7 +94,7 @@ class ApplicationReviewer:
                         job_data.get('status', 'Active'),
                         f"[green]{applicant_count}[/green]"
                     )
-    
+
                 # Display jobs table and options
                 self.console.print(Panel(table, title="Your Posted Jobs", border_style="blue"))
                 
@@ -100,7 +104,7 @@ class ApplicationReviewer:
                 
                 # Process user choice
                 choice = self.input_yellow("\nChoice: ").lower()
-    
+
                 if choice == 'x':
                     break
                 elif choice.isdigit():
@@ -113,7 +117,7 @@ class ApplicationReviewer:
                 else:
                     self.console.print("[red]Invalid input. Please try again.[/red]")
                     self.input_yellow("\nPress Enter to continue...")
-    
+
         except requests.exceptions.RequestException as e:
             self.console.print(f"[red]Network error: Unable to fetch applications. {str(e)}[/red]")
             self.input_yellow("\nPress Enter to continue...")
