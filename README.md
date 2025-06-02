@@ -5,7 +5,7 @@
 
 ## Overview
 
-JobHive revolutionizes the job search experience by addressing the common frustrations and inefficiencies in the traditional hiring process. Our platform transforms job hunting from a tedious chore into a streamlined, transparent, and empowering journey for both job seekers and employers.
+JobHive revolutionises the job search experience by addressing the common frustrations and inefficiencies in the traditional hiring process. Our platform transforms job hunting from a tedious chore into a streamlined, transparent, and empowering journey for both job seekers and employers.
 
 Built with Python, JobHive offers innovative solutions to persistent challenges:
 - **Application Tracking Nightmare?** Our centralized dashboard brings all your applications into one place
